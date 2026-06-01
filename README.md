@@ -21,11 +21,11 @@ Claude writes orchestration scripts that fan out tens–hundreds of parallel sub
 ## The basic unit is an *agent* (pluggable, local → cloud)
 ```mermaid
 flowchart LR
-  S[your workflow script\nagent/parallel/pipeline/phase] --> E[open-dynamic-workflow engine\nscheduler · journal · resume]
-  E --> M[MockBackend\noffline tests]
-  E --> A[AnthropicBackend\nAPI + tool-use loop]
-  E --> C[CliAgentBackend\nlocal: claude / codex / opencode / ccz / cursor (via .custom())]
-  E --> H[HttpAgentBackend\ncloud: remote agent runner]
+  S["your workflow script<br/>agent / parallel / pipeline / phase"] --> E["open-dynamic-workflow engine<br/>scheduler / journal / resume"]
+  E --> M["MockBackend<br/>offline tests"]
+  E --> A["AnthropicBackend<br/>API + tool-use loop"]
+  E --> C["CliAgentBackend<br/>local: claude / codex / opencode / ccz / cursor via .custom"]
+  E --> H["HttpAgentBackend<br/>cloud: remote agent runner"]
 ```
 | backend | the agent unit | use |
 |---|---|---|
