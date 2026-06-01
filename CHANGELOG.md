@@ -7,7 +7,7 @@ Release-readiness hardening for public/open-source distribution.
 
 ### Fixed
 - `parseMeta()` now ignores `export const meta =` text inside regex literals before selecting the real metadata export.
-- CI targets the required ARC runner scale set directly with `runs-on: labclaw-arc`.
+- Public GitHub CI uses GitHub-hosted `ubuntu-latest` runners.
 - Current benchmark docs use placeholder key names instead of account labels or API-key prefixes.
 - Tracked helper/probe scripts no longer hardcode machine-local repository paths.
 - The `ccfree-flash` fleet-matrix worker now passes the same prompt/sandbox flags as the other cc-family wrappers.

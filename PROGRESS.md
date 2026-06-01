@@ -1,6 +1,6 @@
 # Project Status
 
-Current status as of 2026-06-01.
+Current public status as of 2026-06-01.
 
 ## Verification
 
@@ -25,37 +25,25 @@ Expected baseline from the latest local audit:
 - Fresh public-export smoke: passing from a one-commit exported repo created with
   `npm run release:export -- <empty-dir>`; verified with `npm ci`, typecheck,
   build, 239 tests, fidelity, cross-check, and pack dry-run.
+- Public GitHub Actions CI: passing on `main` in
+  `robotlearning123/open-dynamic-workflow`.
 
 ## Release Notes
 
 - Package version in `package.json`: `0.0.7`.
-- Latest GitHub release observed during the 2026-06-01 audit: `v0.0.6`.
-- Current feature branches that add behavior after `v0.0.6` should be released as `v0.0.7` or later before publishing.
-- CI must target the ARC runner scale set directly with `runs-on: labclaw-arc`.
+- Public repository: <https://github.com/robotlearning123/open-dynamic-workflow>.
+- This public repository was seeded from a sanitized current tree, not from the
+  old private repository history.
+- CI uses GitHub-hosted `ubuntu-latest` runners for the public repository.
 
-## Public Release Blockers
+## Private Archive
 
-- Do not make the existing private GitHub repository public until its history is
-  cleaned or the project is published from a fresh sanitized repository. Older
-  commits include benchmark account labels and API-key prefixes in
-  `docs/BENCHMARKS.md`; removing them from the current tree is not enough
-  because public GitHub repositories expose commit history.
-- Push the current local cleanup changes and wait for GitHub Actions to pass on
-  the exact release commit before tagging or publishing.
-- Create the `v0.0.7` git tag and GitHub release only after the sanitized release
-  commit is pushed and CI is green.
-- For a fresh public repository path, use `npm run release:export -- <empty-dir>`
-  and publish from that exported tree instead of flipping this private repo public.
+- The original private history is retained separately in
+  `robotlearning123/open-dynamic-workflow-private-archive`.
+- Do not make that archive public unless its git history is rewritten and
+  rescanned.
 
 ## Open-Source Checklist
-
-Before making the repository public or publishing to npm:
-
-Recommended safe path:
-- Create a fresh public repository from a verified `npm run release:export -- <empty-dir>`
-  output, then push/tag/release/publish from that fresh repo.
-- Do not flip the existing private repository public unless its git history has first
-  been rewritten and rescanned.
 
 - Re-run the verification commands above from a clean checkout.
 - Confirm the current tree and full git history contain no private account labels, key prefixes, raw secrets, local paths that expose sensitive state, or internal handoff instructions.
