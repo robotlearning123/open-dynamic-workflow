@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="深度解析 Claude Code 动态工作流机制：并发调度、缓存策略、链式哈希恢复与可插拔智能体单元 — 基于 7 次真实运行逆向工程">
+<title>Claude Code 动态工作流深度解析</title>
+<style>
+/* ========== CSS Custom Properties ========== */
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --bg-code: #0d1117;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-tertiary: #6e7681;
+  --border-color: #30363d;
+  --accent: #58a6ff;
+  --accent-dim: #1f6feb;
+  --accent-green: #3fb950;
+  --accent-orange: #d29922;
+  --accent-red: #f85149;
+  --accent-purple: #bc8cff;
+  --accent-cyan: #39d353;
+  --sidebar-width: 280px;
+  --header-height: 56px;
+  --code-font: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
+  --body-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+  --shadow: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.4);
+  --transition: 0.2s ease;
+}
+
+[data-theme="light"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f6f8fa;
+  --bg-tertiary: #eaeef2;
+  --bg-code: #f6f8fa;
+  --text-primary: #1f2328;
+  --text-secondary: #656d76;
+  --text-tertiary: #8b949e;
+  --border-color: #d0d7de;
+  --accent: #0969da;
+  --accent-dim: #0550ae;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+/* ========== Reset & Base ========== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; scroll-padding-top: calc(var(--header-height) + 24px); }
+
+body {
+  font-family: var(--body-font);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.7;
+  font-size: 16px;
+  overflow-x: hidden;
+}
+
+/* ========== Header ========== */
+.header {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: var(--header-height);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px;
+  backdrop-filter: blur(12px);
+}
+
+.header-title {
+  font-size: 18px; font-weight: 700; color: var(--text-primary);
+  display: flex; align-items: center; gap: 10px;
+}
+
+.header-title .icon { font-size: 22px; }
+
+.theme-toggle {
+  background: var(--bg-tertiary); border: 1px solid var(--border-color);
+  color: var(--text-primary); padding: 6px 14px; border-radius: 6px;
+  cursor: pointer; font-size: 13px; transition: var(--transition);
+}
+.theme-toggle:hover { background: var(--accent-dim); color: #fff; }
+
+/* ========== Sidebar ========== */
+.sidebar {
+  position: fixed; top: var(--header-height); left: 0; bottom: 0;
+  width: var(--sidebar-width); z-index: 50;
+  background: var(--bg-secondary); border-right: 1px solid var(--border-color);
+  overflow-y: auto; padding: 16px 0;
+  transition: transform 0.3s ease;
+}
+
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
+
+.sidebar a {
+  display: block; padding: 8px 20px; color: var(--text-secondary);
+  text-decoration: none; font-size: 13.5px; transition: var(--transition);
+  border-left: 3px solid transparent;
+}
+.sidebar a:hover { color: var(--text-primary); background: var(--bg-tertiary); }
+.sidebar a.active { color: var(--accent); border-left-color: var(--accent); background: rgba(88,166,255,0.06); font-weight: 600; }
+.sidebar .nav-section { padding: 6px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-tertiary); margin-top: 12px; font-weight: 700; }
+
+/* ========== Main Content ========== */
+.main {
+  margin-left: var(--sidebar-width); margin-top: var(--header-height);
+  padding: 32px 48px 80px; max-width: 920px;
+}
+
+/* ========== Typography ========== */
+h1 { font-size: 2.2em; font-weight: 800; margin-bottom: 8px; line-height: 1.2; }
+h2 { font-size: 1.6em; font-weight: 700; margin: 48px 0 16px; padding-bottom: 10px; border-bottom: 2px solid var(--border-color); }
+h3 { font-size: 1.25em; font-weight: 600; margin: 32px 0 12px; color: var(--accent); }
+h4 { font-size: 1.05em; font-weight: 600; margin: 20px 0 8px; }
+
+p { margin-bottom: 14px; color: var(--text-primary); }
+
+.subtitle { font-size: 1.15em; color: var(--text-secondary); margin-bottom: 32px; max-width: 680px; }
+
+strong { color: var(--accent); font-weight: 600; }
+
+/* ========== Code Blocks ========== */
+pre {
+  background: var(--bg-code); border: 1px solid var(--border-color); border-radius: 8px;
+  padding: 16px 20px; overflow-x: auto; margin: 14px 0 18px; position: relative;
+  font-family: var(--code-font); font-size: 13.5px; line-height: 1.6;
+}
+
+code {
+  font-family: var(--code-font); font-size: 0.9em;
+  background: var(--bg-tertiary); padding: 2px 6px; border-radius: 4px;
+}
+
+pre code { background: none; padding: 0; font-size: inherit; }
+
+.copy-btn {
+  position: absolute; top: 8px; right: 8px; background: var(--bg-tertiary);
+  border: 1px solid var(--border-color); color: var(--text-secondary);
+  padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;
+  opacity: 0; transition: var(--transition);
+}
+pre:hover .copy-btn { opacity: 1; }
+.copy-btn:hover { background: var(--accent-dim); color: #fff; }
+
+/* Syntax highlighting */
+.hl-keyword { color: #ff7b72; }
+.hl-string { color: #a5d6ff; }
+.hl-comment { color: #8b949e; font-style: italic; }
+.hl-function { color: #d2a8ff; }
+.hl-number { color: #79c0ff; }
+.hl-property { color: #7ee787; }
+.hl-type { color: #ffa657; }
+.hl-operator { color: #ff7b72; }
+.hl-tag { color: #7ee787; }
+
+[data-theme="light"] .hl-keyword { color: #cf222e; }
+[data-theme="light"] .hl-string { color: #0a3069; }
+[data-theme="light"] .hl-comment { color: #8b949e; }
+[data-theme="light"] .hl-function { color: #8250df; }
+[data-theme="light"] .hl-number { color: #0550ae; }
+[data-theme="light"] .hl-property { color: #116329; }
+[data-theme="light"] .hl-type { color: #953800; }
+[data-theme="light"] .hl-operator { color: #cf222e; }
+[data-theme="light"] .hl-tag { color: #116329; }
+
+/* ========== Tables ========== */
+table {
+  width: 100%; border-collapse: collapse; margin: 14px 0 20px;
+  font-size: 14px; display: block; overflow-x: auto;
+}
+th, td {
+  padding: 10px 14px; text-align: left; border: 1px solid var(--border-color);
+}
+th { background: var(--bg-tertiary); font-weight: 600; color: var(--text-primary); font-size: 13px; }
+td { color: var(--text-secondary); }
+tr:hover td { background: rgba(88,166,255,0.04); }
+
+/* ========== Callouts ========== */
+.callout {
+  padding: 16px 20px; border-radius: 8px; margin: 16px 0;
+  border-left: 4px solid;
+}
+.callout-info { background: rgba(88,166,255,0.08); border-color: var(--accent); }
+.callout-warning { background: rgba(210,153,34,0.08); border-color: var(--accent-orange); }
+.callout-danger { background: rgba(248,81,73,0.08); border-color: var(--accent-red); }
+.callout-success { background: rgba(63,185,80,0.08); border-color: var(--accent-green); }
+.callout-title { font-weight: 700; margin-bottom: 6px; font-size: 14px; }
+.callout p { margin-bottom: 6px; font-size: 14.5px; }
+
+/* ========== Details/Summary ========== */
+details {
+  border: 1px solid var(--border-color); border-radius: 8px; margin: 12px 0;
+  background: var(--bg-secondary);
+}
+details summary {
+  padding: 12px 18px; cursor: pointer; font-weight: 600; font-size: 14.5px;
+  color: var(--text-primary); list-style: none; display: flex; align-items: center; gap: 8px;
+}
+details summary::before { content: '▶'; font-size: 10px; transition: transform 0.2s; color: var(--accent); }
+details[open] summary::before { transform: rotate(90deg); }
+details > div, details > pre { padding: 0 18px 16px; }
+
+/* ========== Diagram (CSS-based) ========== */
+.diagram-box {
+  background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 8px;
+  padding: 24px; margin: 16px 0; font-family: var(--code-font); font-size: 13px;
+  white-space: pre; overflow-x: auto; line-height: 1.5; color: var(--text-secondary);
+}
+
+.flow-row {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  flex-wrap: wrap; margin: 12px 0;
+}
+.flow-box {
+  background: var(--bg-tertiary); border: 1.5px solid var(--accent); border-radius: 8px;
+  padding: 10px 18px; text-align: center; font-size: 13.5px; font-weight: 600; color: var(--text-primary);
+  min-width: 100px;
+}
+.flow-box.highlight { background: rgba(88,166,255,0.12); border-color: var(--accent-green); }
+.flow-arrow { color: var(--accent); font-size: 20px; font-weight: 700; }
+
+/* ========== Badge ========== */
+.badge {
+  display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px;
+  font-weight: 600; vertical-align: middle;
+}
+.badge-blue { background: rgba(88,166,255,0.15); color: var(--accent); }
+.badge-green { background: rgba(63,185,80,0.15); color: var(--accent-green); }
+.badge-orange { background: rgba(210,153,34,0.15); color: var(--accent-orange); }
+.badge-red { background: rgba(248,81,73,0.15); color: var(--accent-red); }
+.badge-purple { background: rgba(188,140,255,0.15); color: var(--accent-purple); }
+
+/* ========== Grid Layout ========== */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 14px 0; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin: 14px 0; }
+
+.card {
+  background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px;
+  padding: 18px;
+}
+.card h4 { margin-top: 0; color: var(--accent); }
+
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); }
+  .main { margin-left: 0; padding: 24px 20px 60px; }
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .mobile-toggle { display: block !important; }
+}
+
+.mobile-toggle {
+  display: none; background: var(--bg-tertiary); border: 1px solid var(--border-color);
+  color: var(--text-primary); padding: 6px 12px; border-radius: 6px; cursor: pointer;
+  font-size: 18px;
+}
+
+/* ========== Print ========== */
+@media print {
+  .sidebar, .header, .copy-btn, .theme-toggle, .mobile-toggle { display: none !important; }
+  .main { margin: 0; padding: 0; max-width: 100%; }
+  body { background: #fff; color: #000; }
+  pre { border: 1px solid #ddd; background: #f8f8f8; }
+  h2 { page-break-before: auto; }
+}
+</style>
+</head>
+<body>
+
+<!-- ==================== HEADER ==================== -->
+<header class="header">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <button class="mobile-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')">&#9776;</button>
+    <div class="header-title"><span class="icon">&#9889;</span> Claude Code 动态工作流深度解析</div>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()">&#9790; / &#9788;</button>
+</header>
+
+<!-- ==================== SIDEBAR ==================== -->
+<nav class="sidebar" id="sidebar">
+  <div class="nav-section">引言</div>
+  <a href="#overview">&#167;1 概述</a>
+  <a href="#one-minute">&#127793; 一分钟理解</a>
+  <a href="#method">&#167;2 研究方法</a>
+
+  <div class="nav-section">核心机制</div>
+  <a href="#arch">&#167;3 核心架构</a>
+  <a href="#mechanism-sandbox">&#167;3.1 沙箱执行</a>
+  <a href="#mechanism-agent">&#167;3.2 agent() 原子操作</a>
+  <a href="#mechanism-resume">&#167;3.3 链式哈希恢复</a>
+  <a href="#mechanism-schedule">&#167;3.4 调度与并发</a>
+  <a href="#mechanism-backend">&#167;3.5 可插拔后端</a>
+
+  <div class="nav-section">API 参考</div>
+  <a href="#api">&#167;4 完整 API 参考</a>
+  <a href="#execution-model">&#167;5 执行模型</a>
+  <a href="#sandbox">&#167;6 沙箱限制</a>
+  <a href="#resume">&#167;7 恢复与缓存</a>
+  <a href="#errors">&#167;8 错误处理</a>
+
+  <div class="nav-section">实践</div>
+  <a href="#patterns">&#167;9 组合模式</a>
+  <a href="#examples">&#167;10 代码示例</a>
+
+  <div class="nav-section">生态</div>
+  <a href="#comparison">&#167;11 竞品对比</a>
+  <a href="#reproduction">&#167;12 开源复现</a>
+  <a href="#techstack">&#167;13 技术栈</a>
+  <a href="#limitations">&#167;14 局限性</a>
+</nav>
+
+<!-- ==================== MAIN CONTENT ==================== -->
+<main class="main" id="content">
+
+<!-- ============================================================ -->
+<h1 id="overview">&#9889; Claude Code 动态工作流深度解析</h1>
+<p class="subtitle">基于 7 次真实运行逆向工程的完整技术拆解 — 从沙箱机制到并发调度，从链式哈希到可插拔智能体</p>
+<p style="color:var(--text-tertiary);font-size:13px;margin-bottom:24px">2026-05-29 · 基于 <a href="https://github.com/robotlearning123/open-dynamic-workflow" style="color:var(--accent)">open-dynamic-workflow</a> v0.x · 差分保真度 34/34 = 100%</p>
+
+<!-- ========== READING GUIDE ========== -->
+<div class="callout callout-success" style="margin-bottom:32px">
+  <div class="callout-title">&#128209; 阅读指南 — 选择适合你的路径</div>
+  <p><strong>我是 AI 新手 / 非技术背景</strong> — 先读下面的「&#127793; 一分钟理解」，那里用日常比喻解释了核心概念。跳过代码块和「进阶内容」折叠框即可。</p>
+  <p><strong>我是开发者 / 技术管理者</strong> — 重点看 &#167;4（API 参考）和 &#167;9（组合模式），这些展示了工作流能做什么。&#167;11（竞品对比）帮你判断技术选型。</p>
+  <p><strong>我是系统架构师 / 引擎开发者</strong> — 全文都为你准备。&#167;3（五大机制）和 &#167;7（恢复机制）是核心。&#167;12（技术栈）和 &#167;14（局限性）告诉你边界在哪里。</p>
+</div>
+
+<!-- ========== ONE-MINUTE EXPLAIN ========== -->
+<h2 id="one-minute" style="border-bottom-color:var(--accent-green)">&#127793; 一分钟理解：什么是「动态工作流」？</h2>
+
+<p>想象一个场景：你有一个大项目需要完成，比如<strong>审查一份 100 页的代码变更</strong>。</p>
+
+<p><strong>传统方式</strong>：你一个人从头到尾逐页审查 — 很慢，而且你容易疲劳遗漏。</p>
+
+<p><strong>动态工作流方式</strong>：你写一个「任务分配清单」，列出需要检查的维度（安全性、性能、风格…），然后把每个维度<strong>同时</strong>分配给不同的专家。每位专家独立工作，完成后把结果汇总给你。你不需要等所有人全部做完 — 有专家先完成就先看，全部完成后你做最终检查。</p>
+
+<div class="flow-row" style="margin:20px 0">
+  <div class="flow-box" style="min-width:120px">&#128100; 你<br><small>提出任务</small></div>
+  <span class="flow-arrow">&#10132;</span>
+  <div class="flow-box highlight">&#128221; Claude 编写<br><small>分配清单</small></div>
+  <span class="flow-arrow">&#10132;</span>
+  <div class="flow-row" style="flex-direction:column;gap:6px">
+    <div class="flow-box" style="min-width:100px;border-color:var(--accent-purple)">&#128269; 安全专家</div>
+    <div class="flow-box" style="min-width:100px;border-color:var(--accent-orange)">&#9889; 性能专家</div>
+    <div class="flow-box" style="min-width:100px;border-color:var(--accent-cyan)">&#127912; 风格专家</div>
+  </div>
+  <span class="flow-arrow">&#10132;</span>
+  <div class="flow-box highlight">&#9989; 汇总<br><small>自我检查</small></div>
+  <span class="flow-arrow">&#10132;</span>
+  <div class="flow-box">&#128100; 你<br><small>看到最终结果</small></div>
+</div>
+
+<p>这就是动态工作流：<strong>Claude 自动编写任务分配脚本，同时派出多个「子专家」（我们叫它「子智能体」），并行处理，最后汇总检查</strong>。关键创新是 — 这个分配清单是 Claude <strong>实时编写</strong>的，不是提前固定的模板。</p>
+
+<details>
+<summary>&#128218; 进阶：关键术语速查表（Glossary）</summary>
+<div>
+<table>
+  <thead><tr><th>术语</th><th>白话解释</th><th>技术含义</th></tr></thead>
+  <tbody>
+    <tr><td><strong>智能体（Agent）</strong></td><td>一个能独立工作的「AI 员工」</td><td>拥有工具（文件读写、命令行）的完整 Claude Code 实例</td></tr>
+    <tr><td><strong>子智能体（Subagent）</strong></td><td>被主智能体派出去干活的「临时工」</td><td>由 <code>agent()</code> 函数创建的独立 Claude Code 会话</td></tr>
+    <tr><td><strong>并行（Parallel）</strong></td><td>多人同时干活，全部完成才继续</td><td><code>Promise.all</code> 屏障，最多 16 个同时运行</td></tr>
+    <tr><td><strong>流水线（Pipeline）</strong></td><td>每个任务依次经过多个处理步骤</td><td>每个 item 独立通过 stages，无跨阶段等待</td></tr>
+    <tr><td><strong>沙箱（Sandbox）</strong></td><td>一个「安全房间」，脚本在里面只能做允许的事</td><td><code>node:vm</code> 隔离环境，屏蔽文件系统和网络</td></tr>
+    <tr><td><strong>恢复（Resume）</strong></td><td>上次做过的任务不用重做，直接复用</td><td>基于哈希键的内容寻址缓存，跳过已完成的子智能体</td></tr>
+    <tr><td><strong>预算（Budget）</strong></td><td>总共能花多少钱（token）的上限</td><td>输出 token 计量器，超过上限则停止派发新任务</td></tr>
+    <tr><td><strong>后端（Backend）</strong></td><td>干活的「人」是谁 — 可以是不同 AI</td><td>可插拔的智能体实现：Claude、Codex、OpenCode 或云端</td></tr>
+    <tr><td><strong>编排（Orchestration）</strong></td><td>「谁先做、谁后做、谁同时做」的指挥调度</td><td>JavaScript 脚本中 <code>agent/parallel/pipeline</code> 的组合</td></tr>
+  </tbody>
+</table>
+</div>
+</details>
+
+<hr style="margin:32px 0;border-color:var(--border-color)">
+
+<!-- ========== ORIGINAL OVERVIEW ========== -->
+<h2>技术概述</h2>
+
+<p>2026 年，Anthropic 在 Claude Code 中发布了 <strong>动态工作流（Dynamic Workflows）</strong> 功能。其核心理念是：Claude 动态编写 JavaScript 编排脚本，在单次会话中扇出（fan-out）数十到数百个并行子智能体，在将任何结果呈现给用户之前就完成自我检查和验证。</p>
+
+<p>然而，官方公告仅提供了概念性描述 — <strong>没有 API、没有函数名、没有日志格式</strong>。官方文档确认了约束条件，但至今未公开脚本 API。那么，我们如何理解其内部机制？</p>
+
+<div class="callout callout-info">
+  <div class="callout-title">&#128218; 官方描述（翻译）</div>
+  <p>"Claude dynamically writes orchestration scripts that run tens to hundreds of parallel subagents in a single session, checking its work before anything reaches you."</p>
+  <p>翻译：「Claude 动态编写编排脚本，在单次会话中运行数十到数百个并行子智能体，在将结果送达你之前先自我检查。」</p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="method">&#167;2 研究方法：运行 → 采集 → 分析 → 复现 → 差分</h2>
+
+<p>本研究采用<strong>实证驱动</strong>的逆向工程方法，而非凭猜测或记忆推断：</p>
+
+<div class="flow-row">
+  <div class="flow-box highlight">官方博客<br><small>（概念）</small></div>
+  <span class="flow-arrow">&#10132;</span>
+  <div class="flow-box">7 次真实运行<br><small>（探针脚本）</small></div>
+  <span class="flow-arrow">&#10132;</span>
+  <div class="flow-box highlight">工作日志<br><small>（transcript）</small></div>
+  <span class="flow-arrow">&#10132;</span>
+  <div class="flow-box">分析文档<br><small>（ANALYSIS.md）</small></div>
+  <span class="flow-arrow">&#10132;</span>
+  <div class="flow-box highlight">复现引擎<br><small>（src/）</small></div>
+  <span class="flow-arrow">&#10132;</span>
+  <div class="flow-box" style="border-color:var(--accent-green)">差分门控<br><strong>34/34 = 100%</strong></div>
+</div>
+
+<p>每次运行都是一个微型<strong>探针</strong>：一个旨在<strong>激发特定行为并在日志中暴露它</strong>的工作流脚本。Claude Code 持久化每次运行的脚本，并写入一个追加式 <code>journal.jsonl</code> 日志和每个子智能体的完整转录。我们采集这些日志，解析它们（<code>tools/harvest_trace.py</code>），将每个观察转化为 <code>tools/compare.mjs</code> 中的断言，对照捕获的真实行为反复检查我们的引擎。</p>
+
+<h3>实验索引</h3>
+<table>
+  <thead><tr><th>实验</th><th>探针脚本</th><th>隔离的行为</th><th>智能体数</th></tr></thead>
+  <tbody>
+    <tr><td>01</td><td><code>experiment-01-probe.workflow.js</code></td><td>所有原语、parallel/pipeline、schema、budget</td><td>8</td></tr>
+    <tr><td>02</td><td>（01 的恢复运行）</td><td>恢复 / 缓存键语义</td><td>+3 重跑</td></tr>
+    <tr><td>03</td><td><code>experiment-03-concurrency.workflow.js</code></td><td>并发上限</td><td>30</td></tr>
+    <tr><td>04</td><td><code>experiment-04-sandbox.workflow.js</code></td><td>脚本沙箱全局变量</td><td>0</td></tr>
+    <tr><td>05</td><td><code>experiment-05-boundaries/</code></td><td>嵌套深度 + 边界情况</td><td>1</td></tr>
+    <tr><td>06</td><td><code>experiment-06-resume-model.workflow.js</code></td><td>恢复模型：前缀链式 vs 内容寻址</td><td>4 (+3)</td></tr>
+    <tr><td>07</td><td><code>experiment-07-compose.workflow.js</code></td><td>组合：pipeline stage-2 = parallel</td><td>6</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="arch">&#167;3 核心架构：五大机制</h2>
+
+<p>一个"动态工作流"本质上是 <strong>Claude 编写的普通 JavaScript 脚本</strong>；引擎是一个<strong>执行该脚本并将每个 <code>agent()</code> 调用转化为真实的、可调度的、可恢复的子智能体</strong>的运行时。以下五大机制完成了所有工作。</p>
+
+<!-- ========== 3.1 ========== -->
+<h3 id="mechanism-sandbox">&#128274; 机制一：脚本即数据，沙箱执行</h3>
+
+<p>编排脚本在 <code>node:vm</code> 沙箱中运行，其全局变量只有注入的原语加上少数安全的内置对象：</p>
+
+<div class="callout callout-info">
+  <div class="callout-title">&#128218; 关键设计意图</div>
+  <p>时间戳和随机函数被替换为抛出异常的桩函数 — <strong>不是为了安全，而是为了确定性</strong>。恢复（resume）机制对每次调用的输入进行哈希，如果脚本中有活时钟或随机数生成器，回放时缓存键就会改变。</p>
+</div>
+
+<h4>注入的全局变量（脚本可直接使用）</h4>
+<pre><code class="language-js"><span class="hl-comment">// 工作流全局变量</span>
+<span class="hl-property">agent</span>     <span class="hl-comment">// 派生一个子智能体</span>
+<span class="hl-property">parallel</span>  <span class="hl-comment">// 并发执行 + 屏障</span>
+<span class="hl-property">pipeline</span>  <span class="hl-comment">// 流水线，无跨阶段屏障</span>
+<span class="hl-property">phase</span>     <span class="hl-comment">// 进度分组</span>
+<span class="hl-property">log</span>       <span class="hl-comment">// 输出叙述信息</span>
+<span class="hl-property">args</span>      <span class="hl-comment">// 传入的参数</span>
+<span class="hl-property">budget</span>    <span class="hl-comment">// Token 预算</span>
+<span class="hl-property">workflow</span>  <span class="hl-comment">// 嵌套工作流</span>
+
+<span class="hl-comment">// 安全的内置对象</span>
+<span class="hl-type">JSON</span>, <span class="hl-type">Array</span>, <span class="hl-type">Object</span>, <span class="hl-type">String</span>, <span class="hl-type">Number</span>,
+<span class="hl-type">Boolean</span>, <span class="hl-type">Promise</span>, <span class="hl-type">Map</span>, <span class="hl-type">Set</span>,
+<span class="hl-type">console</span>, <span class="hl-type">globalThis</span></code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+
+<h4>被阻止的 API</h4>
+<table>
+  <thead><tr><th>API</th><th>行为</th><th>原因</th></tr></thead>
+  <tbody>
+    <tr><td><code>Date.now()</code></td><td><span class="badge badge-red">抛出异常</span></td><td>破坏恢复确定性</td></tr>
+    <tr><td><code>new Date()</code>（无参数）</td><td><span class="badge badge-red">抛出异常</span></td><td>同上</td></tr>
+    <tr><td><code>new Date(arg)</code>（有参数）</td><td><span class="badge badge-green">正常工作</span></td><td>确定性 — 不依赖当前时间</td></tr>
+    <tr><td><code>Math.random()</code></td><td><span class="badge badge-red">抛出异常</span></td><td>破坏恢复确定性</td></tr>
+    <tr><td><code>require</code> / <code>process</code> / <code>fetch</code></td><td><span class="badge badge-orange">undefined</span></td><td>无 Node/Web API</td></tr>
+  </tbody>
+</table>
+
+<div class="callout callout-danger">
+  <div class="callout-title">&#128272; 安全注意事项</div>
+  <p><code>node:vm</code> 沙箱<strong>不是安全边界</strong> — 注入的宿主对象（<code>console</code>、全局变量甚至 <code>agent</code>）通过 <code>.constructor</code> 暴露了宿主领域的 <code>Function</code>，因此工作流脚本可以访问 <code>process</code>。<strong>仅运行受信任的工作流脚本</strong>（在真实引擎中，脚本由 Claude 编写，因此是可信的）。</p>
+</div>
+
+<!-- ========== 3.2 ========== -->
+<h3 id="mechanism-agent">&#9889; 机制二：<code>agent()</code> 是原子操作</h3>
+
+<p>每个 <code>agent()</code> 调用遵循完全相同的流程。<strong>在任何 <code>await</code> 之前同步</strong>地获取其在序列中的位置，因此调用顺序是确定性的：</p>
+
+<pre><code class="language-js"><span class="hl-comment">// 以下伪代码展示 agent() 的完整执行流程</span>
+
+<span class="hl-comment">// 步骤 1: 同步分配调用序号（在任何 await 之前）</span>
+<span class="hl-keyword">const</span> <span class="hl-property">ordinal</span> = ++<span class="hl-property">state</span>.<span class="hl-property">ordinal</span>          <span class="hl-comment">// 确定性的调用位置</span>
+
+<span class="hl-comment">// 步骤 2: 计算前缀链式哈希</span>
+<span class="hl-keyword">const</span> { <span class="hl-property">key</span>, <span class="hl-property">chain</span> } = <span class="hl-function">chainKey</span>(<span class="hl-property">state</span>.<span class="hl-property">chain</span>, <span class="hl-property">prompt</span>, <span class="hl-property">opts</span>)
+<span class="hl-property">state</span>.<span class="hl-property">chain</span> = <span class="hl-property">chain</span>                      <span class="hl-comment">// 推进链给下一次调用</span>
+
+<span class="hl-comment">// 步骤 3: 生成确定性 agentId</span>
+<span class="hl-keyword">const</span> <span class="hl-property">agentId</span> = <span class="hl-string">"a"</span> + <span class="hl-function">String</span>(<span class="hl-property">ordinal</span>).<span class="hl-function">padStart</span>(<span class="hl-number">3</span>, <span class="hl-string">"0"</span>)
+  + <span class="hl-string">"-"</span> + (++<span class="hl-property">state</span>.<span class="hl-property">agentSeq</span>)
+
+<span class="hl-comment">// 步骤 4: 在获取并发槽位之前检查缓存</span>
+<span class="hl-keyword">const</span> <span class="hl-property">cached</span> = <span class="hl-property">journal</span>.<span class="hl-function">lookup</span>(<span class="hl-property">key</span>)
+<span class="hl-keyword">if</span> (<span class="hl-property">cached</span>.<span class="hl-property">hit</span>) <span class="hl-keyword">return</span> <span class="hl-property">cached</span>.<span class="hl-property">result</span>    <span class="hl-comment">// 恢复：跳过后端和限流器！</span>
+
+<span class="hl-comment">// 步骤 5: 通过并发限流器执行</span>
+<span class="hl-keyword">await</span> <span class="hl-property">limiter</span>.<span class="hl-function">run</span>(<span class="hl-keyword">async</span> () => {
+  <span class="hl-function">budgetCeilingCheck</span>()              <span class="hl-comment">// 输出 token 上限检查</span>
+  <span class="hl-keyword">if</span> (<span class="hl-property">agentCount</span> >= <span class="hl-number">1000</span>) <span class="hl-keyword">throw</span>  <span class="hl-comment">// 生命周期上限</span>
+
+  <span class="hl-property">journal</span>.<span class="hl-function">recordStarted</span>(<span class="hl-property">key</span>, <span class="hl-property">agentId</span>)
+
+  <span class="hl-comment">// &#11015;&#65039; 真实智能体在这里运行！</span>
+  <span class="hl-keyword">const</span> <span class="hl-property">resp</span> = <span class="hl-keyword">await</span> <span class="hl-property">backend</span>.<span class="hl-function">run</span>({
+    <span class="hl-property">prompt</span>, <span class="hl-property">schema</span>, <span class="hl-property">model</span>, <span class="hl-property">agentId</span>
+  })
+
+  <span class="hl-property">state</span>.<span class="hl-property">tokensSpent</span> += <span class="hl-property">resp</span>.<span class="hl-property">outputTokens</span>
+  <span class="hl-property">journal</span>.<span class="hl-function">recordResult</span>(<span class="hl-property">key</span>, <span class="hl-property">agentId</span>, <span class="hl-property">resp</span>.<span class="hl-property">output</span>)
+  <span class="hl-keyword">return</span> <span class="hl-property">resp</span>.<span class="hl-property">output</span>
+})</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+
+<div class="callout callout-success">
+  <div class="callout-title">&#10003; 关键设计点</div>
+  <p><strong>缓存查找在 <code>limiter.run</code> 之前</strong> — 完全缓存的恢复完全绕过并发槽位，不会串行化通过限流器，进度遥测也能正确报告命中。</p>
+</div>
+
+<!-- ========== 3.3 ========== -->
+<h3 id="mechanism-resume">&#128272; 机制三：前缀链式哈希恢复</h3>
+
+<p>每个活跃的 <code>agent()</code> 调用向 <code>journal.jsonl</code> 追加 <code>{started}</code> 然后 <code>{result, key}</code>。重新运行脚本时，每个键被重新计算；匹配时直接返回存储的结果，<strong>不调用后端</strong>。</p>
+
+<p>缓存键<strong>不是简单的 <code>hash(prompt)</code></strong>，而是：</p>
+
+<pre><code class="language-js"><span class="hl-comment">// 前缀链式缓存键算法（ANALYSIS §6 + 实验六验证）</span>
+<span class="hl-comment">// key_n 混合了运行中的 chain 摘要（之前所有调用的信息）+ 当前调用的 prompt + opts</span>
+
+<span class="hl-keyword">function</span> <span class="hl-function">chainKey</span>(<span class="hl-property">prevChain</span>, <span class="hl-property">prompt</span>, <span class="hl-property">opts</span>) {
+  <span class="hl-keyword">const</span> <span class="hl-property">optsDigest</span> = <span class="hl-function">stableStringify</span>({
+    <span class="hl-property">schema</span>: <span class="hl-property">opts</span>.<span class="hl-property">schema</span> ?? <span class="hl-keyword">null</span>,
+    <span class="hl-property">model</span>: <span class="hl-property">opts</span>.<span class="hl-property">model</span> ?? <span class="hl-keyword">null</span>,
+    <span class="hl-property">agentType</span>: <span class="hl-property">opts</span>.<span class="hl-property">agentType</span> ?? <span class="hl-keyword">null</span>,
+    <span class="hl-property">isolation</span>: <span class="hl-property">opts</span>.<span class="hl-property">isolation</span> ?? <span class="hl-keyword">null</span>,
+  })
+  <span class="hl-keyword">const</span> <span class="hl-property">chain</span> = <span class="hl-function">sha256</span>(<span class="hl-property">prevChain</span> + <span class="hl-string">" "</span> + <span class="hl-property">prompt</span> + <span class="hl-string">" "</span> + <span class="hl-property">optsDigest</span>)
+  <span class="hl-keyword">return</span> { <span class="hl-property">key</span>: <span class="hl-string">"v2:"</span> + <span class="hl-property">chain</span>, <span class="hl-property">chain</span> }
+}</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+
+<h4>级联效应（实验 06 证明）</h4>
+<p>设计了一个关键实验：<strong>4 个独立顺序智能体 A → B → C → D，然后仅编辑 B 并恢复</strong>。</p>
+
+<div class="flow-row">
+  <div class="flow-box" style="border-color:var(--accent-green)">A <br><small>&#10003; 缓存命中</small></div>
+  <span class="flow-arrow">&#10132;</span>
+  <div class="flow-box" style="border-color:var(--accent-red)">B <br><small>&#10007; 已编辑，重跑</small></div>
+  <span class="flow-arrow">&#10132;</span>
+  <div class="flow-box" style="border-color:var(--accent-orange)">C <br><small>&#10007; prompt 未变，但 key 变了</small></div>
+  <span class="flow-arrow">&#10132;</span>
+  <div class="flow-box" style="border-color:var(--accent-orange)">D <br><small>&#10007; 同上，级联</small></div>
+</div>
+
+<p><strong>结果</strong>：B、C、D 全部重跑，A 被缓存。关键发现：C 和 D 的 prompt 与上次运行<strong>完全相同</strong>，但它们的缓存键<strong>改变了</strong>。这只能意味着键是前缀链式的 — 编辑 B 扰动了所有后续调用。</p>
+
+<div class="callout callout-info">
+  <div class="callout-title">&#128200; 缓存命中率总结</div>
+  <table>
+    <thead><tr><th>场景</th><th>缓存命中率</th><th>原因</th></tr></thead>
+    <tbody>
+      <tr><td>纯顺序，无修改</td><td><span class="badge badge-green">100%</span></td><td>确定性链 → 相同的键</td></tr>
+      <tr><td>编辑某个调用</td><td><span class="badge badge-orange">部分</span></td><td>从编辑点开始，所有后续键级联变化</td></tr>
+      <tr><td>并发重排序</td><td><span class="badge badge-orange">部分</span></td><td>完成顺序不确定性扰动链</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ========== 3.4 ========== -->
+<h3 id="mechanism-schedule">&#9881; 机制四：<code>parallel</code> / <code>pipeline</code> 调度</h3>
+
+<p><code>parallel</code> 和 <code>pipeline</code> 本身<strong>不做任何调度</strong> — 一个单独的信号量（<strong>限流器</strong>）限制活跃智能体为 <code>min(16, cores-2)</code>。30 个 <code>agent()</code> 调用分两波完成（先 16 个，再 14 个）。</p>
+
+<div class="grid-2">
+  <div class="card">
+    <h4><code>parallel(thunks[])</code></h4>
+    <ul style="padding-left:20px;margin:8px 0;font-size:14px;color:var(--text-secondary)">
+      <li><strong>屏障语义</strong>：等待所有完成</li>
+      <li><strong>保序</strong>：结果按输入顺序</li>
+      <li><strong>异步拒绝</strong> → 该位置 <code>null</code></li>
+      <li><strong>同步抛出</strong> → <span class="badge badge-red">导致整个运行崩溃</span></li>
+    </ul>
+    <pre style="margin-top:8px"><code class="language-js"><span class="hl-comment">// 实际实现（源自 traces/experiment-05）</span>
+<span class="hl-keyword">return</span> <span class="hl-type">Promise</span>.<span class="hl-function">all</span>(
+  <span class="hl-property">thunks</span>.<span class="hl-function">map</span>(<span class="hl-property">t</span> =>
+    <span class="hl-function">t</span>().<span class="hl-function">then</span>(<span class="hl-property">v</span> => <span class="hl-property">v</span>, () => <span class="hl-keyword">null</span>)
+  )
+)</code></pre>
+  </div>
+  <div class="card">
+    <h4><code>pipeline(items, ...stages)</code></h4>
+    <ul style="padding-left:20px;margin:8px 0;font-size:14px;color:var(--text-secondary)">
+      <li><strong>无跨阶段屏障</strong>：各 item 独立流转</li>
+      <li><strong>阶段参数</strong>：<code>(prev, original, index)</code></li>
+      <li><strong>阶段抛出</strong> → 该 item <code>null</code>，跳过后续阶段</li>
+      <li><strong>其他 item 正常继续</strong></li>
+    </ul>
+    <pre style="margin-top:8px"><code class="language-js"><span class="hl-comment">// 每个 item 独立的异步链</span>
+<span class="hl-property">items</span>.<span class="hl-function">map</span>((<span class="hl-property">item</span>, <span class="hl-property">i</span>) => (<span class="hl-keyword">async</span> () => {
+  <span class="hl-keyword">let</span> <span class="hl-property">acc</span> = <span class="hl-property">item</span>
+  <span class="hl-keyword">for</span> (<span class="hl-keyword">const</span> <span class="hl-property">stage</span> <span class="hl-keyword">of</span> <span class="hl-property">stages</span>)
+    <span class="hl-property">acc</span> = <span class="hl-keyword">await</span> <span class="hl-function">stage</span>(<span class="hl-property">acc</span>, <span class="hl-property">item</span>, <span class="hl-property">i</span>)
+  <span class="hl-keyword">return</span> <span class="hl-property">acc</span>
+})()</code></pre>
+  </div>
+</div>
+
+<h4>实测数据（实验 01）</h4>
+<div class="callout callout-success">
+  <div class="callout-title">&#128202; 并发实验证据</div>
+  <p><strong>parallel</strong>：3 个扇出智能体在 <strong>2ms 内</strong>启动（<code>18:57:32.142 / .143 / .144</code>）。下一个阶段等待最慢的智能体（18.8s）完成后才开始。<strong>屏障语义证实。</strong></p>
+  <p><strong>pipeline</strong>：item B 的 stage-2 在 <code>57.010s</code> 开始，<strong>早于</strong> item A 的 stage-1 在 <code>58.066s</code> 结束。<strong>无跨阶段屏障证实。</strong></p>
+  <p><strong>并发上限</strong>：30 个并行智能体的实测分析显示峰值恰好为 <strong>16</strong>（主机 32 核 → <code>min(16, 30) = 16</code>），分两波（16 + 14）。</p>
+</div>
+
+<!-- ========== 3.5 ========== -->
+<h3 id="mechanism-backend">&#128268; 机制五：可插拔的智能体单元</h3>
+
+<p><code>backend.run(...)</code> 是<strong>唯一接触真实智能体的代码行</strong> — 因此"智能体"可以是确定性模拟、Claude API 调用、真实的 CLI 智能体进程，或远程 HTTP 运行器。每种机制对每种后端完全相同；只有单元改变。</p>
+
+<table>
+  <thead><tr><th>后端</th><th>智能体单元</th><th>用途</th></tr></thead>
+  <tbody>
+    <tr><td><code>MockBackend</code></td><td>合成的确定性结果</td><td>离线测试 / 保真度门控</td></tr>
+    <tr><td><code>AnthropicBackend</code></td><td>Claude API 调用 + 工具使用循环</td><td>直接 API 调用</td></tr>
+    <tr><td><code>CliAgentBackend</code></td><td>真实本地智能体进程 <code>.claude()</code> / <code>.codex()</code> / <code>.opencode()</code> / <code>.worker('ccz')</code></td><td>本地混合舰队</td></tr>
+    <tr><td><code>HttpAgentBackend</code></td><td>远程智能体（HTTP）</td><td>云端运行器</td></tr>
+  </tbody>
+</table>
+
+<p>这意味着单一编排可以扇出一个<strong>混合舰队</strong> — Claude Code 做复杂推理，Codex/OpenCode 做代码编辑，免费的本地 worker 做体力活 — 这是封闭的 Claude-only 引擎做不到的。</p>
+
+<!-- ============================================================ -->
+<h2 id="api">&#167;4 完整 API 参考</h2>
+
+<p>以下是在工作流脚本中可用的所有原语的完整文档。API 名称（<code>agent/parallel/pipeline/phase/log/budget/workflow</code>）<strong>未在公开文档中发布</strong>，我们通过运行真实工具并观测行为获得。</p>
+
+<h3><code>agent(prompt, opts?)</code></h3>
+<p>派生一个子智能体并返回其结果。</p>
+
+<pre><code class="language-js"><span class="hl-keyword">const</span> <span class="hl-property">result</span> = <span class="hl-keyword">await</span> <span class="hl-function">agent</span>(<span class="hl-string">"分析这段代码的安全漏洞"</span>, {
+  <span class="hl-property">label</span>: <span class="hl-string">"security-review"</span>,     <span class="hl-comment">// 显示标签（默认 "agent#N"）</span>
+  <span class="hl-property">phase</span>: <span class="hl-string">"Review"</span>,             <span class="hl-comment">// 所属阶段</span>
+  <span class="hl-property">schema</span>: {                       <span class="hl-comment">// JSON Schema → 结构化输出</span>
+    <span class="hl-property">type</span>: <span class="hl-string">"object"</span>,
+    <span class="hl-property">properties</span>: {
+      <span class="hl-property">vulnerabilities</span>: { <span class="hl-property">type</span>: <span class="hl-string">"array"</span>, <span class="hl-property">items</span>: { <span class="hl-property">type</span>: <span class="hl-string">"string"</span> } },
+      <span class="hl-property">severity</span>: { <span class="hl-property">type</span>: <span class="hl-string">"string"</span>, <span class="hl-property">enum</span>: [<span class="hl-string">"low"</span>, <span class="hl-string">"medium"</span>, <span class="hl-string">"high"</span>] }
+    },
+    <span class="hl-property">required</span>: [<span class="hl-string">"vulnerabilities"</span>, <span class="hl-string">"severity"</span>]
+  },
+  <span class="hl-property">model</span>: <span class="hl-string">"sonnet"</span>,               <span class="hl-comment">// 模型别名或完整 ID</span>
+  <span class="hl-property">isolation</span>: <span class="hl-string">"worktree"</span>,       <span class="hl-comment">// 在 git worktree 中隔离运行</span>
+  <span class="hl-property">agentType</span>: <span class="hl-string">"workflow-subagent"</span> <span class="hl-comment">// 子智能体类型（默认值）</span>
+})</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+
+<h3><code>parallel(thunks[])</code></h3>
+<p>并发执行所有 thunk，<strong>屏障</strong>（等待全部完成），结果按输入顺序排列。</p>
+
+<pre><code class="language-js"><span class="hl-keyword">const</span> <span class="hl-property">results</span> = <span class="hl-keyword">await</span> <span class="hl-function">parallel</span>([
+  () => <span class="hl-function">agent</span>(<span class="hl-string">"审查安全性"</span>),
+  () => <span class="hl-function">agent</span>(<span class="hl-string">"审查性能"</span>),
+  () => <span class="hl-function">agent</span>(<span class="hl-string">"审查可维护性"</span>),
+])
+<span class="hl-comment">// results[0] = 安全性结果, results[1] = 性能结果, ...</span>
+<span class="hl-comment">// 如果某个 thunk 异步拒绝 → 对应位置为 null</span></code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+
+<h3><code>pipeline(items, ...stages)</code></h3>
+<p>每个 item 独立通过所有阶段。<strong>无跨阶段屏障</strong> — item A 可能在 stage 3 时，item B 才刚到 stage 1。</p>
+
+<pre><code class="language-js"><span class="hl-keyword">const</span> <span class="hl-property">results</span> = <span class="hl-keyword">await</span> <span class="hl-function">pipeline</span>(
+  [<span class="hl-string">"security"</span>, <span class="hl-string">"performance"</span>, <span class="hl-string">"style"</span>], <span class="hl-comment">// items</span>
+
+  <span class="hl-comment">// stage 1: 审查 (prev = item 本身, original = item, index = 0,1,2)</span>
+  (<span class="hl-property">dim</span>, <span class="hl-property">orig</span>, <span class="hl-property">i</span>) => <span class="hl-function">agent</span>(<span class="hl-string">`审查代码的 ${<span class="hl-property">dim</span>} 维度`</span>, { <span class="hl-property">schema</span>: <span class="hl-property">FINDINGS</span> }),
+
+  <span class="hl-comment">// stage 2: 验证每个发现</span>
+  (<span class="hl-property">review</span>, <span class="hl-property">orig</span>, <span class="hl-property">i</span>) => <span class="hl-function">parallel</span>(
+    <span class="hl-property">review</span>.<span class="hl-property">findings</span>.<span class="hl-function">map</span>(<span class="hl-property">f</span> => () =>
+      <span class="hl-function">agent</span>(<span class="hl-string">`验证: ${<span class="hl-property">f</span>.<span class="hl-property">title</span>}`</span>, { <span class="hl-property">schema</span>: <span class="hl-property">VERDICT</span> })
+    )
+  )
+)</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+
+<h3><code>phase(title)</code></h3>
+<p>设置当前进度组名称。后续 <code>agent()</code> 调用会被归入该阶段。</p>
+<pre><code class="language-js"><span class="hl-function">phase</span>(<span class="hl-string">"Scan"</span>)              <span class="hl-comment">// 后续 agent() 归入 "Scan" 阶段</span>
+<span class="hl-keyword">const</span> <span class="hl-property">flaky</span> = <span class="hl-keyword">await</span> <span class="hl-function">agent</span>(<span class="hl-string">"扫描 CI 日志"</span>)
+<span class="hl-function">phase</span>(<span class="hl-string">"Fix"</span>)               <span class="hl-comment">// 切换到 "Fix" 阶段</span></code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+
+<h3><code>log(message)</code></h3>
+<p>输出叙述性进度消息。</p>
+<pre><code class="language-js"><span class="hl-function">log</span>(<span class="hl-string">`已发现 ${<span class="hl-property">bugs</span>.<span class="hl-property">length</span>}/10 个缺陷`</span>)</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+
+<h3><code>budget</code></h3>
+<p>回合级全局输出 token 计量器。硬上限 — 当 <code>spent() >= total</code> 时 <code>agent()</code> 抛出异常。</p>
+<pre><code class="language-js"><span class="hl-property">budget</span>.<span class="hl-property">total</span>       <span class="hl-comment">// number | null（无限制时为 null）</span>
+<span class="hl-property">budget</span>.<span class="hl-function">spent</span>()      <span class="hl-comment">// 累计输出 token 数</span>
+<span class="hl-property">budget</span>.<span class="hl-function">remaining</span>()  <span class="hl-comment">// total===null ? Infinity : max(0, total-spent())</span>
+
+<span class="hl-comment">// 循环直到预算耗尽</span>
+<span class="hl-keyword">while</span> (<span class="hl-property">budget</span>.<span class="hl-property">total</span> && <span class="hl-property">budget</span>.<span class="hl-function">remaining</span>() > <span class="hl-number">50000</span>) {
+  <span class="hl-keyword">const</span> <span class="hl-property">r</span> = <span class="hl-keyword">await</span> <span class="hl-function">agent</span>(<span class="hl-string">"发现更多缺陷"</span>)
+}</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+
+<h3><code>workflow(nameOrRef, args?)</code></h3>
+<p>内联运行另一个工作流。嵌套限制为<strong>恰好 1 层</strong> — 子工作流调用 <code>workflow()</code> 会抛出异常。</p>
+<pre><code class="language-js"><span class="hl-keyword">const</span> <span class="hl-property">result</span> = <span class="hl-keyword">await</span> <span class="hl-function">workflow</span>(<span class="hl-string">"review-changes"</span>)
+<span class="hl-comment">// 或指定脚本路径：</span>
+<span class="hl-keyword">await</span> <span class="hl-function">workflow</span>({ <span class="hl-property">scriptPath</span>: <span class="hl-string">"./review.js"</span> }, [<span class="hl-string">"arg1"</span>])</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+
+<h3><code>args</code></h3>
+<p>通过 Workflow 工具调用传入的参数值。</p>
+<pre><code class="language-js"><span class="hl-comment">// 调用时: Workflow({ scriptPath: "...", args: ["a.ts", "b.ts"] })</span>
+<span class="hl-keyword">const</span> <span class="hl-property">files</span> = <span class="hl-property">args</span>  <span class="hl-comment">// ["a.ts", "b.ts"]</span></code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+
+<h3>结构化输出（Structured Output）</h3>
+<p>当 <code>opts.schema</code> 被提供时，引擎注册一个名为 <code>StructuredOutput</code> 的工具，其 <code>input_schema</code> 是用户提供的 schema，并通过 <code>tool_choice:{type:"tool",name:"StructuredOutput"}</code> 强制调用。返回的对象就是 <code>tool_use</code> 块的 <code>.input</code>。</p>
+
+<!-- ============================================================ -->
+<h2 id="execution-model">&#167;5 执行模型详解</h2>
+
+<h3>并发上限</h3>
+<p><code>min(16, max(1, cpu_cores - 2))</code> — 实测在 32 核主机上，30 个并行智能体的峰值并发恰好为 <strong>16</strong>，分两波执行（16 + 14）。<code>max(1, ...)</code> 确保即使在单核机器上也至少有 1 个并发槽位。官方文档确认"16（在有限 CPU 上更少）"。</p>
+
+<h3>生命周期上限</h3>
+<p><strong>1000 个智能体/运行</strong>（硬性上限）。这是一个兜底机制，防止失控循环。</p>
+
+<h3>预算机制</h3>
+<p><code>budget.spent()</code> 是一个<strong>回合级全局输出 token 计量器</strong>（主循环 + 所有工作流共享池）。实测值 <code>tokensSpent: 56533</code> 远低于会话的真实 token 使用量 — 所以它只计算输出 token。<code>total=null</code> 时 <code>remaining() === Infinity</code>。</p>
+
+<div class="callout callout-warning">
+  <div class="callout-title">&#9888; 预算是尽力而为</div>
+  <p><code>agent()</code> 在调用时检查 <code>spent() >= total</code>。它不是严格的逐调用限制 — 一个正在运行的智能体不会在每次调用时被即时截断，N 个并发智能体可能各自通过检查后才累加计数。</p>
+</div>
+
+
+<h3>模型别名</h3>
+<table>
+  <thead><tr><th>别名</th><th>解析为</th></tr></thead>
+  <tbody>
+    <tr><td><code>sonnet</code></td><td><code>claude-sonnet-4-6</code></td></tr>
+    <tr><td><code>haiku</code></td><td><code>claude-haiku-4-5-20251001</code></td></tr>
+    <tr><td><code>opus</code></td><td><code>claude-opus-4-6</code>（按命名约定推断）</td></tr>
+  </tbody>
+</table>
+
+<h3>子智能体 = 完整的 Claude Code 智能体</h3>
+<p>子智能体不是简单的 LLM 调用 — 它是拥有 <code>Bash</code>、文件系统、技能和 MCP 工具的完整 Claude Code 智能体。探针数据显示一个智能体实际执行了 shell 命令和文件读取操作后才回答。</p>
+
+<!-- ============================================================ -->
+<h2 id="sandbox">&#167;6 沙箱限制详解</h2>
+
+<h4>精确错误消息</h4>
+
+<details>
+<summary>&#128274; Date.now() / new Date() 的错误消息</summary>
+<pre><code class="language-js"><span class="hl-string">"Date.now() / new Date() are unavailable in workflow scripts (breaks resume). Stamp results after the workflow returns, or pass timestamps via args."</span></code>
+</details>
+
+<details>
+<summary>&#128274; Math.random() 的错误消息</summary>
+<pre><code class="language-js"><span class="hl-string">"Math.random() is unavailable in workflow scripts (breaks resume). For N independent samples, include the index in the agent label or prompt."</span></code>
+</details>
+
+<details>
+<summary>&#128274; workflow() 嵌套错误消息</summary>
+<pre><code class="language-js"><span class="hl-string">"workflow() cannot be called from within a child workflow — nesting is limited to one level. Inline the inner script or call its agents directly."</span></code>
+</details>
+
+<h4>完整沙箱 API 矩阵</h4>
+<table>
+  <thead><tr><th>API</th><th>可用性</th><th>备注</th></tr></thead>
+  <tbody>
+    <tr><td><code>JSON</code></td><td><span class="badge badge-green">&#10003;</span></td><td>完全可用</td></tr>
+    <tr><td><code>Math</code>（除 <code>random</code>）</td><td><span class="badge badge-green">&#10003;</span></td><td><code>floor</code>, <code>ceil</code>, <code>max</code> 等正常</td></tr>
+    <tr><td><code>Math.random()</code></td><td><span class="badge badge-red">&#10007;</span></td><td>抛出异常</td></tr>
+    <tr><td><code>Date.now()</code></td><td><span class="badge badge-red">&#10007;</span></td><td>抛出异常</td></tr>
+    <tr><td><code>new Date()</code></td><td><span class="badge badge-red">&#10007;</span></td><td>抛出异常</td></tr>
+    <tr><td><code>new Date(timestamp)</code></td><td><span class="badge badge-green">&#10003;</span></td><td>有参数时正常工作</td></tr>
+    <tr><td><code>require</code></td><td><span class="badge badge-orange">undefined</span></td><td></td></tr>
+    <tr><td><code>process</code></td><td><span class="badge badge-orange">undefined</span></td><td></td></tr>
+    <tr><td><code>fetch</code></td><td><span class="badge badge-orange">undefined</span></td><td></td></tr>
+    <tr><td><code>Array/Object/String/Number/Boolean</code></td><td><span class="badge badge-green">&#10003;</span></td><td>完全可用</td></tr>
+    <tr><td><code>Promise/Map/Set</code></td><td><span class="badge badge-green">&#10003;</span></td><td>完全可用</td></tr>
+    <tr><td><code>console</code></td><td><span class="badge badge-green">&#10003;</span></td><td>完全可用</td></tr>
+    <tr><td><code>globalThis</code></td><td><span class="badge badge-green">&#10003;</span></td><td>空对象</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="resume">&#167;7 恢复与缓存机制</h2>
+
+<h3>日志格式</h3>
+<p>追加式 JSONL，每行一个 JSON 对象：</p>
+
+<pre><code class="language-json">{"type":"started","key":"v2:a1b2c3d4e5f6...","agentId":"a001-1"}
+{"type":"result","key":"v2:a1b2c3d4e5f6...","agentId":"a001-1","result":{"answer":"..."}}
+{"type":"started","key":"v2:f6e5d4c3b2a1...","agentId":"a002-2"}
+{"type":"result","key":"v2:f6e5d4c3b2a1...","agentId":"a002-2","result":"[text output]"}</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+
+<h3>恢复算法</h3>
+<ol>
+  <li>加载前次运行的 <code>result</code> 事件到 <code>Map&lt;key, result&gt;</code></li>
+  <li>重新执行脚本 — 每个 <code>agent()</code> 调用重新计算 key</li>
+  <li>如果 key 匹配 → 直接返回缓存结果，<strong>不调用后端，不占用并发槽</strong></li>
+  <li>如果 key 不匹配 → 正常执行（调用后端、写入日志）</li>
+</ol>
+
+<h3>三种缓存场景</h3>
+
+<div class="grid-3">
+  <div class="card" style="border-top:3px solid var(--accent-green)">
+    <h4 style="color:var(--accent-green)">&#10003; 纯顺序，无修改</h4>
+    <p style="font-size:14px">100% 缓存命中。确定性链产生相同的键序列。所有 <code>agent()</code> 调用直接返回缓存。</p>
+  </div>
+  <div class="card" style="border-top:3px solid var(--accent-orange)">
+    <h4 style="color:var(--accent-orange)">&#9888; 编辑某个调用</h4>
+    <p style="font-size:14px">级联效应：从编辑点开始，所有后续调用的 key 改变。编辑点之前的调用缓存命中，之后全部重跑。</p>
+  </div>
+  <div class="card" style="border-top:3px solid var(--accent-orange)">
+    <h4 style="color:var(--accent-orange)">&#9888; 并发重排序</h4>
+    <p style="font-size:14px"><code>parallel</code>/<code>pipeline</code> 的完成顺序不确定，扰动了下游的链，导致部分缓存命中。</p>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="errors">&#167;8 错误处理与边界情况</h2>
+
+<h3>parallel vs pipeline 的非对称性</h3>
+
+<p>这是最令人惊讶的发现之一。两种原语的错误处理行为<strong>不对称</strong>：</p>
+
+<table>
+  <thead><tr><th>情况</th><th><code>parallel</code></th><th><code>pipeline</code></th></tr></thead>
+  <tbody>
+    <tr><td>空输入</td><td><code>[]</code></td><td><code>[]</code></td></tr>
+    <tr><td>异步拒绝（如 agent 错误）</td><td>对应位置 <code>null</code></td><td>该 item <code>null</code>，跳过后续阶段</td></tr>
+    <tr><td><strong>同步抛出</strong></td><td><span class="badge badge-red">导致整个运行崩溃</span></td><td><span class="badge badge-green">该 item → null</span></td></tr>
+    <tr><td>多个同时出错</td><td>各位置独立 → <code>null</code></td><td>各 item 独立 → <code>null</code></td></tr>
+  </tbody>
+</table>
+
+<div class="callout callout-danger">
+  <div class="callout-title">&#9888; parallel 的同步抛出会崩溃</div>
+  <p>文档说抛出的 thunk "解析为 <code>null</code>"。但第一个探针在 thunk 中放入<strong>同步</strong> <code>throw</code> — <strong>整个工作流崩溃了</strong>。只有<strong>异步</strong>拒绝变为 <code>null</code>。</p>
+  <p>原因：<code>t().then(v => v, () => null)</code> — <code>t()</code> 中的同步抛出在 <code>.then</code> 能捕获之前就逃逸了 <code>.map</code> 回调。</p>
+  <p>而 <code>pipeline</code> 中每个阶段在异步 per-item 链内运行，同步抛出被包含为该链的拒绝 → <code>null</code>。<strong>这种不对称性是真实存在的。</strong></p>
+</div>
+
+<details>
+<summary>&#128270; 嵌套限制（experiment-05）</summary>
+<div>
+  <p><code>workflow()</code> 嵌套限制为<strong>恰好 1 层</strong>。顶层工作流可以调用 <code>workflow()</code>，但<strong>子工作流</strong>调用 <code>workflow()</code> 会抛出精确的错误消息：</p>
+  <pre><code class="language-js"><span class="hl-comment">// 顶层 workflow</span>
+<span class="hl-keyword">const</span> <span class="hl-property">child</span> = <span class="hl-keyword">await</span> <span class="hl-function">workflow</span>(<span class="hl-string">"child"</span>)  <span class="hl-comment">// &#10003; 正常</span>
+
+<span class="hl-comment">// 子工作流内部：</span>
+<span class="hl-keyword">await</span> <span class="hl-function">workflow</span>(<span class="hl-string">"grandchild"</span>)  <span class="hl-comment">// &#10007; 抛出异常！</span>
+<span class="hl-comment">// Error: "workflow() cannot be called from within a child workflow —</span>
+<span class="hl-comment">// nesting is limited to one level. Inline the inner script or call its agents directly."</span></code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+</div>
+</details>
+
+<!-- ============================================================ -->
+<h2 id="patterns">&#167;9 经典组合模式</h2>
+
+<h3>&#128269; 审查 → 验证（Review → Verify）</h3>
+<p>最经典的工作流形状：多个维度并行审查 → 每个发现独立验证 → 过滤确认的。</p>
+<pre><code class="language-js"><span class="hl-keyword">const</span> <span class="hl-property">DIMENSIONS</span> = [
+  { <span class="hl-property">key</span>: <span class="hl-string">"bugs"</span>, <span class="hl-property">prompt</span>: <span class="hl-string">"查找正确性缺陷"</span> },
+  { <span class="hl-property">key</span>: <span class="hl-string">"security"</span>, <span class="hl-property">prompt</span>: <span class="hl-string">"查找安全漏洞"</span> },
+  { <span class="hl-property">key</span>: <span class="hl-string">"performance"</span>, <span class="hl-property">prompt</span>: <span class="hl-string">"查找性能问题"</span> },
+]
+
+<span class="hl-keyword">const</span> <span class="hl-property">results</span> = <span class="hl-keyword">await</span> <span class="hl-function">pipeline</span>(
+  <span class="hl-property">DIMENSIONS</span>,
+  <span class="hl-comment">// stage 1: 每个维度并行审查</span>
+  <span class="hl-property">d</span> => <span class="hl-function">agent</span>(<span class="hl-property">d</span>.<span class="hl-property">prompt</span>, { <span class="hl-property">label</span>: <span class="hl-string">`review:${<span class="hl-property">d</span>.<span class="hl-property">key</span>}`</span>, <span class="hl-property">phase</span>: <span class="hl-string">"Review"</span>, <span class="hl-property">schema</span>: <span class="hl-property">FINDINGS</span> }),
+  <span class="hl-comment">// stage 2: 每个发现并行验证</span>
+  <span class="hl-property">review</span> => <span class="hl-function">parallel</span>(
+    <span class="hl-property">review</span>.<span class="hl-property">findings</span>.<span class="hl-function">map</span>(<span class="hl-property">f</span> => () =>
+      <span class="hl-function">agent</span>(<span class="hl-string">`对抗性验证: ${<span class="hl-property">f</span>.<span class="hl-property">title</span>}`</span>, { <span class="hl-property">label</span>: <span class="hl-string">`verify:${<span class="hl-property">f</span>.<span class="hl-property">file</span>}`</span>, <span class="hl-property">phase</span>: <span class="hl-string">"Verify"</span>, <span class="hl-property">schema</span>: <span class="hl-property">VERDICT</span> })
+    )
+  )
+)
+<span class="hl-keyword">const</span> <span class="hl-property">confirmed</span> = <span class="hl-property">results</span>.<span class="hl-function">flat</span>().<span class="hl-function">filter</span>(<span class="hl-property">v</span> => <span class="hl-property">v</span>?.<span class="hl-property">isReal</span>)</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+
+<h3>&#128218; 多模态研究</h3>
+<pre><code class="language-js"><span class="hl-keyword">const</span> <span class="hl-property">sources</span> = <span class="hl-keyword">await</span> <span class="hl-function">parallel</span>([
+  () => <span class="hl-function">agent</span>(<span class="hl-string">"按容器搜索"</span>, { <span class="hl-property">phase</span>: <span class="hl-string">"Find"</span> }),
+  () => <span class="hl-function">agent</span>(<span class="hl-string">"按内容搜索"</span>, { <span class="hl-property">phase</span>: <span class="hl-string">"Find"</span> }),
+  () => <span class="hl-function">agent</span>(<span class="hl-string">"按实体搜索"</span>, { <span class="hl-property">phase</span>: <span class="hl-string">"Find"</span> }),
+])
+<span class="hl-keyword">const</span> <span class="hl-property">deepRead</span> = <span class="hl-keyword">await</span> <span class="hl-function">pipeline</span>(
+  <span class="hl-property">sources</span>.<span class="hl-function">flat</span>(),
+  <span class="hl-property">src</span> => <span class="hl-function">agent</span>(<span class="hl-string">`深入阅读: ${<span class="hl-property">src</span>.<span class="hl-property">url</span>}`</span>),
+  <span class="hl-property">analysis</span> => <span class="hl-function">agent</span>(<span class="hl-string">"综合分析"</span>, { <span class="hl-property">schema</span>: <span class="hl-property">REPORT</span> })
+)</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+
+<h3>&#128260; 循环直到耗尽（Loop-until-dry）</h3>
+<pre><code class="language-js"><span class="hl-keyword">const</span> <span class="hl-property">seen</span> = <span class="hl-keyword">new</span> <span class="hl-type">Set</span>(), <span class="hl-property">confirmed</span> = []
+<span class="hl-keyword">let</span> <span class="hl-property">dry</span> = <span class="hl-number">0</span>
+
+<span class="hl-keyword">while</span> (<span class="hl-property">dry</span> < <span class="hl-number">2</span>) {                             <span class="hl-comment">// 连续 2 轮无新发现则停止</span>
+  <span class="hl-keyword">const</span> <span class="hl-property">found</span> = (<span class="hl-keyword">await</span> <span class="hl-function">parallel</span>(
+    <span class="hl-property">FINDERS</span>.<span class="hl-function">map</span>(<span class="hl-property">f</span> => () => <span class="hl-function">agent</span>(<span class="hl-property">f</span>.<span class="hl-property">prompt</span>, { <span class="hl-property">phase</span>: <span class="hl-string">"Find"</span>, <span class="hl-property">schema</span>: <span class="hl-property">BUGS</span> }))
+  )).<span class="hl-function">flat</span>().<span class="hl-function">filter</span>(<span class="hl-type">Boolean</span>).<span class="hl-function">flatMap</span>(<span class="hl-property">r</span> => <span class="hl-property">r</span>.<span class="hl-property">bugs</span>)
+
+  <span class="hl-keyword">const</span> <span class="hl-property">fresh</span> = <span class="hl-property">found</span>.<span class="hl-function">filter</span>(<span class="hl-property">b</span> => !<span class="hl-property">seen</span>.<span class="hl-function">has</span>(<span class="hl-function">key</span>(<span class="hl-property">b</span>)))
+  <span class="hl-keyword">if</span> (!<span class="hl-property">fresh</span>.<span class="hl-property">length</span>) { <span class="hl-property">dry</span>++; <span class="hl-keyword">continue</span> }
+  <span class="hl-property">dry</span> = <span class="hl-number">0</span>
+  <span class="hl-property">fresh</span>.<span class="hl-function">forEach</span>(<span class="hl-property">b</span> => <span class="hl-property">seen</span>.<span class="hl-function">add</span>(<span class="hl-function">key</span>(<span class="hl-property">b</span>)))
+
+  <span class="hl-keyword">const</span> <span class="hl-property">judged</span> = <span class="hl-keyword">await</span> <span class="hl-function">parallel</span>(
+    <span class="hl-property">fresh</span>.<span class="hl-function">map</span>(<span class="hl-property">b</span> => () => <span class="hl-function">parallel</span>(
+      [<span class="hl-string">"correctness"</span>, <span class="hl-string">"security"</span>, <span class="hl-string">"repro"</span>].<span class="hl-function">map</span>(<span class="hl-property">lens</span> => () =>
+        <span class="hl-function">agent</span>(<span class="hl-string">`通过 ${<span class="hl-property">lens</span>} 视角判断 "${<span class="hl-property">b</span>.<span class="hl-property">desc</span>}"`</span>, { <span class="hl-property">phase</span>: <span class="hl-string">"Verify"</span>, <span class="hl-property">schema</span>: <span class="hl-property">VERDICT</span> })
+      )
+    ))
+  )
+  <span class="hl-property">confirmed</span>.<span class="hl-function">push</span>(...<span class="hl-property">judged</span>.<span class="hl-function">filter</span>(<span class="hl-property">v</span> => <span class="hl-property">v</span>.<span class="hl-property">real</span>))
+}</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+
+<h3>&#128176; 循环直到预算耗尽（Loop-until-budget）</h3>
+<pre><code class="language-js"><span class="hl-keyword">const</span> <span class="hl-property">bugs</span> = []
+<span class="hl-keyword">while</span> (<span class="hl-property">budget</span>.<span class="hl-property">total</span> && <span class="hl-property">budget</span>.<span class="hl-function">remaining</span>() > <span class="hl-number">50000</span>) {
+  <span class="hl-keyword">const</span> <span class="hl-property">result</span> = <span class="hl-keyword">await</span> <span class="hl-function">agent</span>(<span class="hl-string">"查找代码库中的缺陷"</span>, { <span class="hl-property">schema</span>: <span class="hl-property">BUGS_SCHEMA</span> })
+  <span class="hl-property">bugs</span>.<span class="hl-function">push</span>(...<span class="hl-property">result</span>.<span class="hl-property">bugs</span>)
+  <span class="hl-function">log</span>(<span class="hl-string">`已发现 ${<span class="hl-property">bugs</span>.<span class="hl-property">length</span>} 个，剩余 ${<span class="hl-function">Math</span>.<span class="hl-function">round</span>(<span class="hl-property">budget</span>.<span class="hl-function">remaining</span>()/<span class="hl-number">1000</span>)}k token`</span>)
+}</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+
+<!-- ============================================================ -->
+<h2 id="examples">&#167;10 完整代码示例</h2>
+
+<h3>最小工作流脚本</h3>
+<pre><code class="language-js"><span class="hl-keyword">export const</span> <span class="hl-property">meta</span> = {
+  <span class="hl-property">name</span>: <span class="hl-string">"hello-workflow"</span>,
+  <span class="hl-property">description</span>: <span class="hl-string">"最小动态工作流示例"</span>,
+  <span class="hl-property">phases</span>: [{ <span class="hl-property">title</span>: <span class="hl-string">"Greet"</span> }],
+}
+
+<span class="hl-function">phase</span>(<span class="hl-string">"Greet"</span>)
+<span class="hl-keyword">const</span> <span class="hl-property">results</span> = <span class="hl-keyword">await</span> <span class="hl-function">parallel</span>([
+  () => <span class="hl-function">agent</span>(<span class="hl-string">"用中文打招呼"</span>),
+  () => <span class="hl-function">agent</span>(<span class="hl-string">"用日语打招呼"</span>),
+  () => <span class="hl-function">agent</span>(<span class="hl-string">"用韩语打招呼"</span>),
+])
+<span class="hl-keyword">return</span> { <span class="hl-property">greetings</span>: <span class="hl-property">results</span> }</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+
+<h3>使用开源引擎</h3>
+<pre><code class="language-js"><span class="hl-keyword">import</span> { <span class="hl-function">runWorkflowFile</span>, <span class="hl-type">CliAgentBackend</span> } <span class="hl-keyword">from</span> <span class="hl-string">"open-dynamic-workflow"</span>
+
+<span class="hl-comment">// 使用真实 Claude Code 智能体运行工作流</span>
+<span class="hl-keyword">const</span> <span class="hl-property">result</span> = <span class="hl-keyword">await</span> <span class="hl-function">runWorkflowFile</span>(<span class="hl-string">"examples/review-changes.js"</span>, {
+  <span class="hl-property">backend</span>: <span class="hl-type">CliAgentBackend</span>.<span class="hl-function">claude</span>({
+    <span class="hl-property">model</span>: <span class="hl-string">"claude-haiku-4-5-20251001"</span>
+  }),
+})
+
+<span class="hl-comment">// 或使用 MockBackend 离线测试</span>
+<span class="hl-keyword">const</span> <span class="hl-property">mock</span> = <span class="hl-keyword">await</span> <span class="hl-function">runWorkflowFile</span>(<span class="hl-string">"examples/review-changes.js"</span>, {
+  <span class="hl-property">backend</span>: <span class="hl-keyword">new</span> <span class="hl-type">MockBackend</span>(),
+})
+
+<span class="hl-comment">// 从 CLI 运行：</span>
+<span class="hl-comment">// node dist/cli.js examples/review-changes.js --mock</span></code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+
+<!-- ============================================================ -->
+<h2 id="comparison">&#167;11 竞品对比</h2>
+
+<h3>主流编排框架对比</h3>
+<table>
+  <thead><tr><th>框架</th><th>&#9733;</th><th>模型</th><th>真实 CLI 智能体</th><th>恢复</th><th>保真度验证</th><th>语言</th></tr></thead>
+  <tbody>
+    <tr><td>LangGraph</td><td>33.3k</td><td>图/状态机</td><td><span class="badge badge-red">否</span></td><td>一等公民</td><td><span class="badge badge-red">否</span></td><td>Py(+JS)</td></tr>
+    <tr><td>CrewAI</td><td>52.4k</td><td>角色型团队</td><td><span class="badge badge-red">否</span></td><td>基础</td><td><span class="badge badge-red">否</span></td><td>Py</td></tr>
+    <tr><td>AutoGen/AG2</td><td>58.5k/4.6k</td><td>对话参与者</td><td>Docker exec</td><td>弱</td><td><span class="badge badge-red">否</span></td><td>Py</td></tr>
+    <tr><td>OpenAI Agents SDK</td><td>26.7k</td><td>交接链</td><td>SandboxAgent</td><td>会话</td><td><span class="badge badge-red">否</span></td><td>Py</td></tr>
+    <tr><td>claude-flow/Ruflo</td><td>56.1k</td><td>群体/MCP</td><td>通过 CLI <small style="color:var(--accent-orange)">(质量存疑)</small></td><td>部分</td><td><span class="badge badge-red">否</span></td><td>TS</td></tr>
+    <tr><td>claude-squad</td><td>7.7k</td><td>TUI 会话管理</td><td><span class="badge badge-green">是</span>（手动）</td><td>手动</td><td><span class="badge badge-red">否</span></td><td>Go</td></tr>
+    <tr><td>Mastra</td><td>24.5k</td><td><code>.then/.parallel</code> DAG</td><td><span class="badge badge-red">否</span></td><td>暂停/恢复</td><td><span class="badge badge-red">否</span></td><td>TS</td></tr>
+    <tr><td>OpenHands</td><td>75.2k</td><td>开发智能体</td><td><span class="badge badge-green">是</span></td><td><span class="badge badge-green">是</span></td><td><span class="badge badge-red">否</span></td><td>Py</td></tr>
+    <tr style="background:rgba(88,166,255,0.06)"><td><strong>open-dynamic-workflow</strong></td><td>新</td><td><strong>脚本驱动, Claude 1:1</strong></td><td><span class="badge badge-green">可插拔</span></td><td><span class="badge badge-green">journal+链式键</span></td><td><span class="badge badge-green">34/34</span></td><td><strong>TS</strong></td></tr>
+  </tbody>
+</table>
+
+<h3>定位图</h3>
+<div class="diagram-box">
+                         开放 / 可移植 / 多供应商
+                                      &#9650;
+  开放框架（LLM 调用单元）             |     &#9733; open-dynamic-workflow
+  LangGraph&#183;CrewAI&#183;AutoGen&#183;Mastra     |     开放 + 动态脚本 + 真实智能体单元,
+  开放智能体管理器（真实智能体）:        |     经过验证的 1:1 保真度,
+  claude-squad&#183;wanman                 |     可作为可插拔后端驱动一切
+  &#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#9616;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#2500;&#9654;
+  托管运行时（你带编排）                 |   动态脚本, 真实智能体编排器
+  OpenAI&#183;Vertex&#183;Bedrock&#183;Claude-Managed |   &#9670; 原始 Claude 动态工作流
+  （封闭, 供应商锁定, 可扩展）           |     最强大 — 但封闭, 会话内,
+                                      &#9660;       单一供应商, 仅会话内恢复
+                         封闭 / 供应商锁定 / 托管</div>
+
+<h3>vs 托管产品</h3>
+<table>
+  <thead><tr><th>方面</th><th>Kimi K2.6 Agent Swarm</th><th>Manus Wide Research</th><th>open-dynamic-workflow</th></tr></thead>
+  <tbody>
+    <tr><td><strong>类型</strong></td><td>托管产品（封闭群体编排）</td><td>托管产品（封闭云 VM 舰队）</td><td>开放库 — 可嵌入 npm 包</td></tr>
+    <tr><td><strong>最大并发</strong></td><td>300 子智能体（厂商声称）</td><td>20 并发子任务</td><td>min(16, cores-2) 本地</td></tr>
+    <tr><td><strong>智能体单元</strong></td><td>K2.6 模型实例</td><td>独立 Manus 实例</td><td>可插拔：多供应商</td></tr>
+    <tr><td><strong>开源？</strong></td><td>权重开放，编排层封闭</td><td>否</td><td>MIT 完全开放</td></tr>
+    <tr><td><strong>离线测试</strong></td><td>不可用</td><td>不可用</td><td>MockBackend — 完全确定性</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="reproduction">&#167;12 开源复现项目</h2>
+
+<p><strong>open-dynamic-workflow</strong> 是一个约 2000 行的 TypeScript 引擎，在 <code>node:vm</code> 沙箱中运行普通 JS 工作流脚本，注入全局变量 <code>agent/parallel/pipeline/phase/log/budget/workflow</code>。</p>
+
+<h3>关键指标</h3>
+<div class="grid-3">
+  <div class="card" style="text-align:center">
+    <div style="font-size:2em;font-weight:800;color:var(--accent)">34/34</div>
+    <div style="color:var(--text-secondary);font-size:14px">差分保真度门控</div>
+  </div>
+  <div class="card" style="text-align:center">
+    <div style="font-size:2em;font-weight:800;color:var(--accent-green)">142</div>
+    <div style="color:var(--text-secondary);font-size:14px">Vitest 单元测试</div>
+  </div>
+  <div class="card" style="text-align:center">
+    <div style="font-size:2em;font-weight:800;color:var(--accent-purple)">~91%</div>
+    <div style="color:var(--text-secondary);font-size:14px">代码覆盖率（手动测量）</div>
+  </div>
+</div>
+
+<h3>快速开始</h3>
+<pre><code class="language-bash"><span class="hl-comment"># 克隆并安装</span>
+git clone https://github.com/robotlearning123/open-dynamic-workflow
+<span class="hl-keyword">cd</span> open-dynamic-workflow
+npm install && npm run build
+
+<span class="hl-comment"># 运行测试 + 保真度门控</span>
+npm test          <span class="hl-comment"># 142 个测试</span>
+npm run compare   <span class="hl-comment"># 34/34 保真度</span>
+
+<span class="hl-comment"># 使用 MockBackend 离线运行</span>
+node dist/cli.js examples/review-changes.js --mock</code><button class="copy-btn" onclick="copyCode(this)">复制</button></pre>
+
+<!-- ============================================================ -->
+<h2 id="techstack">&#167;13 技术栈与实现细节</h2>
+
+<table>
+  <thead><tr><th>组件</th><th>技术</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td>语言</td><td>TypeScript, ESM, NodeNext, strict</td><td>严格的类型安全</td></tr>
+    <tr><td>沙箱</td><td><code>node:vm</code></td><td>脚本隔离执行环境</td></tr>
+    <tr><td>缓存键</td><td>SHA-256 前缀链式哈希</td><td>确定性的恢复机制</td></tr>
+    <tr><td>日志</td><td>追加式 JSONL（2 事件模型）</td><td><code>started</code> + <code>result</code></td></tr>
+    <tr><td>并发控制</td><td>信号量限流器</td><td>FIFO 队列 + 槽位管理</td></tr>
+    <tr><td>结构化输出</td><td>Anthropic SDK 强制工具调用</td><td>StructuredOutput tool + tool_choice</td></tr>
+    <tr><td>隔离</td><td>Git worktree 支持</td><td>每个智能体独立的 git 工作树</td></tr>
+    <tr><td>测试</td><td>Vitest</td><td>142 个单元测试 + 差分门控</td></tr>
+    <tr><td>CI</td><td>GitHub Actions</td><td>自动构建 + 测试 + 保真度检查</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="limitations">&#167;14 诚实的局限性</h2>
+
+<div class="callout callout-warning">
+  <div class="callout-title">&#9888; 诚实的边界</div>
+  <p>本复现再现了<strong>可观测行为</strong>，而非 Anthropic 的内部实现。</p>
+</div>
+
+<table>
+  <thead><tr><th>方面</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td><strong>v2 哈希原像</strong></td><td>未公开 — 我们匹配形状和语义，而非字节</td></tr>
+    <tr><td><strong>预算作用域</strong></td><td>我们的引擎是运行范围（run-scoped），真实引擎是回合全局（turn-global）</td></tr>
+    <tr><td><strong>vm 沙箱</strong></td><td>仅限 Node.js — 不是安全边界，仅匹配可观测 API</td></tr>
+    <tr><td><strong>子智能体</strong></td><td>建模为可插拔单元，而非嵌入 Claude Code 本身</td></tr>
+    <tr><td><strong>恢复范围</strong></td><td>官方仅支持同会话恢复；我们的跨会话日志恢复是故意的超集</td></tr>
+    <tr><td><strong>成熟度</strong></td><td>v0.x — 新项目，未在大规模场景中验证</td></tr>
+    <tr><td><strong>社区</strong></td><td>最小社区 — 新项目</td></tr>
+    <tr><td><strong>UI / 可观测性</strong></td><td>无 Web UI、无 LangSmith/AgentOps 集成</td></tr>
+    <tr><td><strong>Python API</strong></td><td>仅有 TypeScript API</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<hr style="margin:48px 0;border-color:var(--border-color)">
+<p style="text-align:center;color:var(--text-tertiary);font-size:13px">
+  <em>"Claude" 和 "Claude Code" 是 Anthropic 的产品。本文档基于独立的教育性逆向工程。</em><br>
+  <em>所有技术发现基于 7 次真实运行的实证观测，差分门控 34/34 = 100%。</em><br><br>
+  基于 <a href="https://github.com/robotlearning123/open-dynamic-workflow" style="color:var(--accent)">open-dynamic-workflow</a> 项目 — MIT 许可证
+</p>
+
+</main>
+
+<!-- ==================== SCRIPTS ==================== -->
+<script>
+// Theme toggle
+function toggleTheme() {
+  const html = document.documentElement
+  const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'
+  html.setAttribute('data-theme', next)
+  try { localStorage.setItem('theme', next) } catch(e) {}
+}
+
+// Restore theme
+try {
+  const saved = localStorage.getItem('theme')
+  if (saved) document.documentElement.setAttribute('data-theme', saved)
+} catch(e) {}
+
+// Copy code
+function copyCode(btn) {
+  const pre = btn.closest('pre')
+  const code = pre.querySelector('code')
+  navigator.clipboard.writeText(code.textContent).then(() => {
+    btn.textContent = '已复制!'
+    setTimeout(() => btn.textContent = '复制', 1500)
+  })
+}
+
+// Scrollspy
+const sections = document.querySelectorAll('h2[id], h3[id]')
+const navLinks = document.querySelectorAll('.sidebar a')
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      navLinks.forEach(link => link.classList.remove('active'))
+      const id = entry.target.id
+      const active = document.querySelector(`.sidebar a[href="#${id}"]`)
+      if (active) active.classList.add('active')
+    }
+  })
+}, { rootMargin: '-20% 0px -70% 0px', threshold: 0 })
+
+sections.forEach(section => observer.observe(section))
+
+// Close sidebar on mobile when clicking a link
+navLinks.forEach(link => {
+  link.addEventListener('click', () => {
+    if (window.innerWidth <= 900) {
+      document.querySelector('.sidebar').classList.remove('open')
+    }
+  })
+})
+</script>
+
+</body>
+</html>

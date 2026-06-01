@@ -1,0 +1,81 @@
+{
+  "summary": "Probe which script-sandbox globals are blocked vs allowed (Date/Math/require/process/fetch).",
+  "agentCount": 0,
+  "logs": [
+    "[sandbox] [{\"label\":\"Date.now()\",\"ok\":false,\"error\":\"Date.now() / new Date() are unavailable in workflow scripts (breaks resume). Stamp results after the workflow returns, or pass timestamps via args.\"},{\"label\":\"new Date()\",\"ok\":false,\"error\":\"Date.now() / new Date() are unavailable in workflow scripts (breaks resume). Stamp results after the workflow returns, or pass timestamps via args.\"},{\"label\":\"new Date(0)\",\"ok\":true,\"value\":\"1970-01-01T00:00:00.000Z\"},{\"label\":\"Math.random()\",\"ok\":false,\"error\":\"Math.random() is unavailable in workflow scripts (breaks resume). For N independent samples, include the index in the agent label or prompt.\"},{\"label\":\"Math.floor(1.7)\",\"ok\":true,\"value\":\"1\"},{\"label\":\"JSON ok\",\"ok\":true,\"value\":\"{\\\"a\\\":1}\"},{\"label\":\"typeof require\",\"ok\":true,\"value\":\"undefined\"},{\"label\":\"typeof process\",\"ok\":true,\"value\":\"undefined\"},{\"label\":\"typeof globalThis\",\"ok\":true,\"value\":\"object\"},{\"label\":\"typeof fetch\",\"ok\":true,\"value\":\"undefined\"},{\"label\":\"typeof agent\",\"ok\":true,\"value\":\"function\"},{\"label\":\"typeof parallel\",\"ok\":true,\"value\":\"function\"},{\"label\":\"typeof pipeline\",\"ok\":true,\"value\":\"function\"},{\"label\":\"typeof budget\",\"ok\":true,\"value\":\"object\"}]"
+  ],
+  "result": {
+    "results": [
+      {
+        "label": "Date.now()",
+        "ok": false,
+        "error": "Date.now() / new Date() are unavailable in workflow scripts (breaks resume). Stamp results after the workflow returns, or pass timestamps via args."
+      },
+      {
+        "label": "new Date()",
+        "ok": false,
+        "error": "Date.now() / new Date() are unavailable in workflow scripts (breaks resume). Stamp results after the workflow returns, or pass timestamps via args."
+      },
+      {
+        "label": "new Date(0)",
+        "ok": true,
+        "value": "1970-01-01T00:00:00.000Z"
+      },
+      {
+        "label": "Math.random()",
+        "ok": false,
+        "error": "Math.random() is unavailable in workflow scripts (breaks resume). For N independent samples, include the index in the agent label or prompt."
+      },
+      {
+        "label": "Math.floor(1.7)",
+        "ok": true,
+        "value": "1"
+      },
+      {
+        "label": "JSON ok",
+        "ok": true,
+        "value": "{\"a\":1}"
+      },
+      {
+        "label": "typeof require",
+        "ok": true,
+        "value": "undefined"
+      },
+      {
+        "label": "typeof process",
+        "ok": true,
+        "value": "undefined"
+      },
+      {
+        "label": "typeof globalThis",
+        "ok": true,
+        "value": "object"
+      },
+      {
+        "label": "typeof fetch",
+        "ok": true,
+        "value": "undefined"
+      },
+      {
+        "label": "typeof agent",
+        "ok": true,
+        "value": "function"
+      },
+      {
+        "label": "typeof parallel",
+        "ok": true,
+        "value": "function"
+      },
+      {
+        "label": "typeof pipeline",
+        "ok": true,
+        "value": "function"
+      },
+      {
+        "label": "typeof budget",
+        "ok": true,
+        "value": "object"
+      }
+    ]
+  }
+}

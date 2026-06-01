@@ -1,0 +1,8 @@
+{"type":"started","key":"v2:2a6d558078c9b6555fe6fd2890f866e8febd305d05be991eebde465ddc77ffcd","agentId":"a941665c8aabe9c43"}
+{"type":"result","key":"v2:2a6d558078c9b6555fe6fd2890f866e8febd305d05be991eebde465ddc77ffcd","agentId":"a941665c8aabe9c43","result":"A1"}
+{"type":"started","key":"v2:51833380ef6bf10f11ae67bcac2e86bdbad118e533a69bd3830acc309fbc693a","agentId":"a81814f1d9ace4f71"}
+{"type":"result","key":"v2:51833380ef6bf10f11ae67bcac2e86bdbad118e533a69bd3830acc309fbc693a","agentId":"a81814f1d9ace4f71","result":"B1"}
+{"type":"started","key":"v2:89c572d50c85c2cb9ff616cf9d99e2bf8499c458c0936e2dbcc67418379a2683","agentId":"a8fcb17b52473a21e"}
+{"type":"result","key":"v2:89c572d50c85c2cb9ff616cf9d99e2bf8499c458c0936e2dbcc67418379a2683","agentId":"a8fcb17b52473a21e","result":"C1"}
+{"type":"started","key":"v2:783b98da1adbc5a3a076d03bc3042957d49643dec4b155831ffb366b4889d60c","agentId":"ad13bb7645749726d"}
+{"type":"result","key":"v2:783b98da1adbc5a3a076d03bc3042957d49643dec4b155831ffb366b4889d60c","agentId":"ad13bb7645749726d","result":"D1"}

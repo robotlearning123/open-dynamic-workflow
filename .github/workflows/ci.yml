@@ -1,0 +1,27 @@
+name: ci
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+
+jobs:
+  build-test-fidelity:
+    runs-on: labclaw-arc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+      - name: Unit tests
+        run: npm test
+      - name: 1:1 fidelity gate (OURS vs CLAUDE traces)
+        run: node tools/compare.mjs
+      - name: Journal cross-check
+        run: node tools/crosscheck.mjs

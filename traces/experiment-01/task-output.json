@@ -1,0 +1,50 @@
+{
+  "summary": "Instrumented real run to capture ground-truth execution data for a 1:1 reproduction of dynamic workflows.",
+  "agentCount": 8,
+  "logs": [
+    "[trace] start: budget.total=null spent=52817 remaining=Infinity",
+    "[trace] fanout ok=3/3 spent=55098 remaining=Infinity",
+    "[trace] pipeline chains_ok=2/2 spent=55471 remaining=Infinity",
+    "[trace] end: spent=56533 remaining=Infinity"
+  ],
+  "result": {
+    "meta_name": "trace-dynamic-workflow",
+    "budgetTotal": null,
+    "tokensSpent": 56533,
+    "fanoutOrderPreserved": true,
+    "fanout": [
+      {
+        "id": 0,
+        "primitive": "parallel-barrier",
+        "note": "waits for all parallel branches to finish"
+      },
+      {
+        "id": 1,
+        "primitive": "concurrency-cap",
+        "note": "Limits maximum parallel concurrent operations"
+      },
+      {
+        "id": 2,
+        "primitive": "schema-output",
+        "note": "Formats result into required data structure"
+      }
+    ],
+    "pipeline": [
+      "Received stage-1 id=0, primitive=\"pipeline:stage-semantics\" for originalItem=\"stage-semantics\".",
+      "Received stage-1 id=1 for originalItem=\"no-barrier\" with primitive=\"pipeline:no-barrier\"."
+    ],
+    "synthesis": "Two fanout primitives were exercised (parallel-barrier and concurrency-cap), plus schema-output for result formatting, while the pipeline exercised pipeline:stage-semantics and pipeline:no-barrier across two stages. The parallel fanout preserved input order, as evidenced by the items retaining their original id sequence (0, 1, 2). The pipeline also maintained order, with stage-1 results indexed consistently with their original items.",
+    "exercised": [
+      "phase",
+      "parallel",
+      "pipeline",
+      "agent+schema",
+      "agent+text",
+      "log",
+      "budget",
+      "model-override",
+      "opts.label",
+      "opts.phase"
+    ]
+  }
+}

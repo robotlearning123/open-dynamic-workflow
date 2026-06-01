@@ -1,0 +1,20 @@
+{
+  "summary": "Stress probe: N parallel trivial agents to measure the concurrency cap via start-time clustering.",
+  "agentCount": 30,
+  "logs": [
+    "[cap] launching 30 parallel agents; expected cap=min(16,cores-2)",
+    "[cap] done ok=30/30 spent=113115"
+  ],
+  "result": {
+    "N": 30,
+    "ok": 30,
+    "sample": [
+      "0",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5"
+    ]
+  }
+}

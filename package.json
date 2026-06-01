@@ -1,0 +1,77 @@
+{
+  "name": "open-dynamic-workflow",
+  "version": "0.0.7",
+  "description": "An evidence-grounded 1:1 reproduction of Claude Code dynamic workflows (agent/parallel/pipeline/phase/log + structured output + concurrency cap + resume), with pluggable real-agent backends (Claude/Codex/OpenCode/cloud).",
+  "license": "MIT",
+  "keywords": [
+    "claude",
+    "claude-code",
+    "dynamic-workflows",
+    "agent-orchestration",
+    "subagents",
+    "parallel",
+    "pipeline",
+    "ai-agents",
+    "llm",
+    "workflow"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/robotlearning123/open-dynamic-workflow.git"
+  },
+  "homepage": "https://github.com/robotlearning123/open-dynamic-workflow#readme",
+  "bugs": {
+    "url": "https://github.com/robotlearning123/open-dynamic-workflow/issues"
+  },
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "run-workflow": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "CHANGELOG.md",
+    "SECURITY.md",
+    "RUNLOG.md",
+    "PROVENANCE.md",
+    "SPEC.md",
+    "ANALYSIS.md",
+    "docs/AGENT-POOL.md",
+    "docs/BENCHMARKS.md",
+    "docs/COMPARISON.md",
+    "docs/PARITY.md",
+    "docs/blog",
+    "docs/claude-dynamic-workflow-explained.html",
+    "examples",
+    "tools/fleet-matrix.mjs"
+  ],
+  "scripts": {
+    "prepublishOnly": "npm run build",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "crosscheck": "npm run build && node tools/crosscheck.mjs",
+    "compare": "npm run build && node tools/compare.mjs",
+    "release:export": "node tools/prepare-public-export.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.100.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "^4.1.7",
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.7"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

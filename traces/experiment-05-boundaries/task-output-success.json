@@ -1,0 +1,26 @@
+{
+  "summary": "Wave C: probe parallel/pipeline edge cases (empty, throwing) and workflow() nesting depth (expected 1 level).",
+  "agentCount": 1,
+  "logs": [
+    "parallel[1] failed: Error: boom-async",
+    "pipeline[0] failed: Error: boom-stage",
+    "▸ running dynamic workflow child",
+    "▸ child done"
+  ],
+  "result": {
+    "emptyParallel": [],
+    "emptyPipeline": [],
+    "asyncRejectParallel_len": 2,
+    "asyncRejectParallel_nullAt1": true,
+    "throwingPipeline": [
+      null,
+      "b-done"
+    ],
+    "parentLevelError": null,
+    "childResult": {
+      "level": "child",
+      "nestedRan": null,
+      "nestedError": "workflow() cannot be called from within a child workflow — nesting is limited to one level. Inline the inner script or call its agents directly."
+    }
+  }
+}

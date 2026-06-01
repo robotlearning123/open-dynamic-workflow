@@ -1,0 +1,110 @@
+[
+  {
+    "type": "started",
+    "key": "v2:b90252fd96dab60005f070f4272f48fbd2237497c0dd303fbe0710d89ee2abbf",
+    "agentId": "a68c0e47121ce5227"
+  },
+  {
+    "type": "started",
+    "key": "v2:15db82de81eb30d857c9a170bc26f930b6b699eb5052f3e303539c44a21e3ca4",
+    "agentId": "a121115b7b37b5c30"
+  },
+  {
+    "type": "started",
+    "key": "v2:b35253f62136c17878b0e2a2bdc81e7b4e956e86b2ce0ad377844ad67748b6cd",
+    "agentId": "ab93e096ab0124880"
+  },
+  {
+    "type": "result",
+    "key": "v2:15db82de81eb30d857c9a170bc26f930b6b699eb5052f3e303539c44a21e3ca4",
+    "agentId": "a121115b7b37b5c30",
+    "result": {
+      "id": 0,
+      "primitive": "parallel-barrier",
+      "note": "waits for all parallel branches to finish"
+    }
+  },
+  {
+    "type": "result",
+    "key": "v2:b90252fd96dab60005f070f4272f48fbd2237497c0dd303fbe0710d89ee2abbf",
+    "agentId": "a68c0e47121ce5227",
+    "result": {
+      "id": 2,
+      "primitive": "schema-output",
+      "note": "Formats result into required data structure"
+    }
+  },
+  {
+    "type": "result",
+    "key": "v2:b35253f62136c17878b0e2a2bdc81e7b4e956e86b2ce0ad377844ad67748b6cd",
+    "agentId": "ab93e096ab0124880",
+    "result": {
+      "id": 1,
+      "primitive": "concurrency-cap",
+      "note": "Limits maximum parallel concurrent operations"
+    }
+  },
+  {
+    "type": "started",
+    "key": "v2:a607e66739a039a5b56f65b1ff9731981c3ba94997686820f5b54cd06bf50d5b",
+    "agentId": "a3430465e7f877557"
+  },
+  {
+    "type": "started",
+    "key": "v2:0ec60850c3a90bb4eec46807286bd96ef035766db526bfd5c4e19d272b237e70",
+    "agentId": "a5c58063469a80539"
+  },
+  {
+    "type": "result",
+    "key": "v2:0ec60850c3a90bb4eec46807286bd96ef035766db526bfd5c4e19d272b237e70",
+    "agentId": "a5c58063469a80539",
+    "result": {
+      "id": 1,
+      "primitive": "pipeline:no-barrier",
+      "note": "no-barrier stage complete"
+    }
+  },
+  {
+    "type": "started",
+    "key": "v2:8e674c5dd6583a5fba230ad7a879d8974616c375291482a7ed07c26e8eb0abb9",
+    "agentId": "ab8495e020517bd52"
+  },
+  {
+    "type": "result",
+    "key": "v2:a607e66739a039a5b56f65b1ff9731981c3ba94997686820f5b54cd06bf50d5b",
+    "agentId": "a3430465e7f877557",
+    "result": {
+      "id": 0,
+      "primitive": "pipeline:stage-semantics",
+      "note": "Semantic analysis pipeline stage"
+    }
+  },
+  {
+    "type": "started",
+    "key": "v2:e901f44d177740dfb50fce9a81b43c937c8af33b241cf90f9373009efce688c4",
+    "agentId": "a6f9ac3be866a4996"
+  },
+  {
+    "type": "result",
+    "key": "v2:e901f44d177740dfb50fce9a81b43c937c8af33b241cf90f9373009efce688c4",
+    "agentId": "a6f9ac3be866a4996",
+    "result": "Received stage-1 id=0, primitive=\"pipeline:stage-semantics\" for originalItem=\"stage-semantics\"."
+  },
+  {
+    "type": "result",
+    "key": "v2:8e674c5dd6583a5fba230ad7a879d8974616c375291482a7ed07c26e8eb0abb9",
+    "agentId": "ab8495e020517bd52",
+    "result": "Received stage-1 id=1 for originalItem=\"no-barrier\" with primitive=\"pipeline:no-barrier\"."
+  },
+  {
+    "type": "started",
+    "key": "v2:f7ec08a98d8e83455c6271e8d687d49854555ef18e531df4034986c0df67509a",
+    "agentId": "a045f01fb09cd51c6"
+  },
+  {
+    "type": "result",
+    "key": "v2:f7ec08a98d8e83455c6271e8d687d49854555ef18e531df4034986c0df67509a",
+    "agentId": "a045f01fb09cd51c6",
+    "result": "Two fanout primitives were exercised (parallel-barrier and concurrency-cap), plus schema-output for result formatting, while the pipeline exercised pipeline:stage-semantics and pipeline:no-barrier across two stages. The parallel fanout preserved input order, as evidenced by the items retaining their original id sequence (0, 1, 2). The pipeline also maintained order, with stage-1 results indexed consistently with their original items."
+  }
+]

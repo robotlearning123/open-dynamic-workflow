@@ -1,0 +1,33 @@
+{
+  "summary": "pipeline whose stage-2 is a parallel (canonical review->verify); verify composition + nested schema + result threading.",
+  "agentCount": 6,
+  "logs": [],
+  "result": {
+    "shape": [
+      2,
+      2
+    ],
+    "out": [
+      [
+        {
+          "ref": "style-p",
+          "ok": true
+        },
+        {
+          "ref": "style-q",
+          "ok": true
+        }
+      ],
+      [
+        {
+          "ref": "perf-p",
+          "ok": true
+        },
+        {
+          "ref": "perf-q",
+          "ok": true
+        }
+      ]
+    ]
+  }
+}

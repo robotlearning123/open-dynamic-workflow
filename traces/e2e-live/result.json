@@ -1,0 +1,12 @@
+{
+  "runId": "wf_0e550857c949",
+  "agentCount": 2,
+  "tokensSpent": 4,
+  "result": {
+    "results": [
+      "ALPHA",
+      "BETA"
+    ]
+  },
+  "backend": "CliAgentBackend.claude(haiku)"
+}

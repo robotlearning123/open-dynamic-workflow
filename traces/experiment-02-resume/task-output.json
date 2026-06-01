@@ -1,0 +1,50 @@
+{
+  "summary": "Instrumented real run to capture ground-truth execution data for a 1:1 reproduction of dynamic workflows.",
+  "agentCount": 8,
+  "logs": [
+    "[trace] start: budget.total=null spent=85214 remaining=Infinity",
+    "[trace] fanout ok=3/3 spent=85214 remaining=Infinity",
+    "[trace] pipeline chains_ok=2/2 spent=87765 remaining=Infinity",
+    "[trace] end: spent=87886 remaining=Infinity"
+  ],
+  "result": {
+    "meta_name": "trace-dynamic-workflow",
+    "budgetTotal": null,
+    "tokensSpent": 87886,
+    "fanoutOrderPreserved": true,
+    "fanout": [
+      {
+        "id": 0,
+        "primitive": "parallel-barrier",
+        "note": "waits for all parallel branches to finish"
+      },
+      {
+        "id": 1,
+        "primitive": "concurrency-cap",
+        "note": "Limits maximum parallel concurrent operations"
+      },
+      {
+        "id": 2,
+        "primitive": "schema-output",
+        "note": "Formats result into required data structure"
+      }
+    ],
+    "pipeline": [
+      "I received stage-1 id=0 with primitive=\"pipeline:stage-semantics\" for the semantic analysis pipeline stage.",
+      "Received stage-1 id=1 for originalItem=\"no-barrier\" (primitive: pipeline:no-barrier)."
+    ],
+    "synthesis": "Three primitives were exercised: **parallel-barrier** (waits for all parallel branches), **concurrency-cap** (limits max concurrent operations), and **schema-output** (formats results into a required structure), alongside two pipeline stages covering **pipeline:stage-semantics** and **pipeline:no-barrier**. The parallel fanout produced results with ids 0, 1, 2 in the original input order, confirming that order was preserved. The pipeline results were delivered sequentially as stage-1 entries, consistent with ordered pipeline execution.",
+    "exercised": [
+      "phase",
+      "parallel",
+      "pipeline",
+      "agent+schema",
+      "agent+text",
+      "log",
+      "budget",
+      "model-override",
+      "opts.label",
+      "opts.phase"
+    ]
+  }
+}

@@ -1,0 +1,443 @@
+[
+  {
+    "agentId": "a045f01fb09cd51c6",
+    "file": "agent-a045f01fb09cd51c6.jsonl",
+    "n_events": 4,
+    "model": "claude-sonnet-4-6",
+    "usage": {
+      "input_tokens": 3,
+      "cache_creation_input_tokens": 15673,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 98,
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 15673,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 3,
+          "output_tokens": 98,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 15673,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 15673
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "prompt": "You are the synthesizer. Fanout results: [{\"id\":0,\"primitive\":\"parallel-barrier\",\"note\":\"waits for all parallel branches to finish\"},{\"id\":1,\"primitive\":\"concurrency-cap\",\"note\":\"Limits maximum parallel concurrent operations\"},{\"id\":2,\"primitive\":\"schema-output\",\"note\":\"Formats result into required data structure\"}]. Pipeline results: [\"Received stage-1 id=0, primitive=\\\"pipeline:stage-semantics\\\" for originalItem=\\\"stage-semantics\\\".\",\"Received stage-1 id=1 for originalItem=\\\"no-barrier\\\" with primitive=\\\"pipeline:no-barrier\\\".\"]. In at most 3 sentences, summarize which primitives were exercised and whether parallel preserved input order.",
+    "n_attachments": 2,
+    "attachments": "[2 attachment(s) saved under system-attachments/]",
+    "tool_uses": [],
+    "tool_results": [],
+    "result": "Two fanout primitives were exercised (parallel-barrier and concurrency-cap), plus schema-output for result formatting, while the pipeline exercised pipeline:stage-semantics and pipeline:no-barrier across two stages. The parallel fanout preserved input order, as evidenced by the items retaining their original id sequence (0, 1, 2). The pipeline also maintained order, with stage-1 results indexed consistently with their original items.",
+    "result_kind": "text",
+    "start": "2026-05-28T18:58:01.944000+00:00",
+    "end": "2026-05-28T18:58:06.330000+00:00",
+    "duration_s": 4.386,
+    "journal_key": "v2:f7ec08a98d8e83455c6271e8d687d49854555ef18e531df4034986c0df67509a",
+    "journal_result_matches": true
+  },
+  {
+    "agentId": "a121115b7b37b5c30",
+    "file": "agent-a121115b7b37b5c30.jsonl",
+    "n_events": 5,
+    "model": "claude-sonnet-4-6",
+    "usage": {
+      "input_tokens": 3,
+      "cache_creation_input_tokens": 15672,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 98,
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 15672,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 3,
+          "output_tokens": 98,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 15672,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 15672
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "prompt": "You are probe #0. Return id=0, primitive=\"parallel-barrier\", and a note of at most 6 words describing what the \"parallel-barrier\" aspect of a dynamic workflow does.",
+    "n_attachments": 2,
+    "attachments": "[2 attachment(s) saved under system-attachments/]",
+    "tool_uses": [
+      {
+        "name": "StructuredOutput",
+        "input": {
+          "id": 0,
+          "primitive": "parallel-barrier",
+          "note": "waits for all parallel branches to finish"
+        }
+      }
+    ],
+    "tool_results": [
+      "Structured output provided successfully"
+    ],
+    "result": {
+      "id": 0,
+      "primitive": "parallel-barrier",
+      "note": "waits for all parallel branches to finish"
+    },
+    "result_kind": "structured",
+    "start": "2026-05-28T18:57:32.142000+00:00",
+    "end": "2026-05-28T18:57:34.876000+00:00",
+    "duration_s": 2.734,
+    "journal_key": "v2:15db82de81eb30d857c9a170bc26f930b6b699eb5052f3e303539c44a21e3ca4",
+    "journal_result_matches": true
+  },
+  {
+    "agentId": "a3430465e7f877557",
+    "file": "agent-a3430465e7f877557.jsonl",
+    "n_events": 6,
+    "model": "claude-haiku-4-5-20251001",
+    "usage": {
+      "input_tokens": 5,
+      "cache_creation_input_tokens": 408,
+      "cache_read_input_tokens": 115862,
+      "output_tokens": 41,
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 408,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 5,
+          "output_tokens": 41,
+          "cache_read_input_tokens": 115862,
+          "cache_creation_input_tokens": 408,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 408
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "prompt": "Pipeline stage-1, index=0, item=\"stage-semantics\". Return id=0, primitive=\"pipeline:stage-semantics\", note of at most 6 words.",
+    "n_attachments": 1,
+    "attachments": "[1 attachment(s) saved under system-attachments/]",
+    "tool_uses": [
+      {
+        "name": "StructuredOutput",
+        "input": {
+          "id": 0,
+          "primitive": "pipeline:stage-semantics",
+          "note": "Semantic analysis pipeline stage"
+        }
+      }
+    ],
+    "tool_results": [
+      "Structured output provided successfully"
+    ],
+    "result": {
+      "id": 0,
+      "primitive": "pipeline:stage-semantics",
+      "note": "Semantic analysis pipeline stage"
+    },
+    "result_kind": "structured",
+    "start": "2026-05-28T18:57:53.015000+00:00",
+    "end": "2026-05-28T18:57:58.066000+00:00",
+    "duration_s": 5.051,
+    "journal_key": "v2:a607e66739a039a5b56f65b1ff9731981c3ba94997686820f5b54cd06bf50d5b",
+    "journal_result_matches": true
+  },
+  {
+    "agentId": "a5c58063469a80539",
+    "file": "agent-a5c58063469a80539.jsonl",
+    "n_events": 4,
+    "model": "claude-haiku-4-5-20251001",
+    "usage": {
+      "input_tokens": 3,
+      "cache_creation_input_tokens": 5848,
+      "cache_read_input_tokens": 110012,
+      "output_tokens": 97,
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 5848,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 3,
+          "output_tokens": 97,
+          "cache_read_input_tokens": 110012,
+          "cache_creation_input_tokens": 5848,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 5848
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "prompt": "Pipeline stage-1, index=1, item=\"no-barrier\". Return id=1, primitive=\"pipeline:no-barrier\", note of at most 6 words.",
+    "n_attachments": 1,
+    "attachments": "[1 attachment(s) saved under system-attachments/]",
+    "tool_uses": [
+      {
+        "name": "StructuredOutput",
+        "input": {
+          "id": 1,
+          "primitive": "pipeline:no-barrier",
+          "note": "no-barrier stage complete"
+        }
+      }
+    ],
+    "tool_results": [
+      "Structured output provided successfully"
+    ],
+    "result": {
+      "id": 1,
+      "primitive": "pipeline:no-barrier",
+      "note": "no-barrier stage complete"
+    },
+    "result_kind": "structured",
+    "start": "2026-05-28T18:57:53.016000+00:00",
+    "end": "2026-05-28T18:57:55.182000+00:00",
+    "duration_s": 2.166,
+    "journal_key": "v2:0ec60850c3a90bb4eec46807286bd96ef035766db526bfd5c4e19d272b237e70",
+    "journal_result_matches": true
+  },
+  {
+    "agentId": "a68c0e47121ce5227",
+    "file": "agent-a68c0e47121ce5227.jsonl",
+    "n_events": 5,
+    "model": "claude-haiku-4-5-20251001",
+    "usage": {
+      "input_tokens": 3,
+      "cache_creation_input_tokens": 115865,
+      "cache_read_input_tokens": 0,
+      "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 115865
+      },
+      "output_tokens": 1,
+      "service_tier": "standard",
+      "inference_geo": "not_available"
+    },
+    "prompt": "You are probe #2. Return id=2, primitive=\"schema-output\", and a note of at most 6 words describing what the \"schema-output\" aspect of a dynamic workflow does.",
+    "n_attachments": 1,
+    "attachments": "[1 attachment(s) saved under system-attachments/]",
+    "tool_uses": [
+      {
+        "name": "StructuredOutput",
+        "input": {
+          "id": 2,
+          "primitive": "schema-output",
+          "note": "Formats result into required data structure"
+        }
+      }
+    ],
+    "tool_results": [
+      "Structured output provided successfully"
+    ],
+    "result": {
+      "id": 2,
+      "primitive": "schema-output",
+      "note": "Formats result into required data structure"
+    },
+    "result_kind": "structured",
+    "start": "2026-05-28T18:57:32.144000+00:00",
+    "end": "2026-05-28T18:57:35.783000+00:00",
+    "duration_s": 3.639,
+    "journal_key": "v2:b90252fd96dab60005f070f4272f48fbd2237497c0dd303fbe0710d89ee2abbf",
+    "journal_result_matches": true
+  },
+  {
+    "agentId": "a6f9ac3be866a4996",
+    "file": "agent-a6f9ac3be866a4996.jsonl",
+    "n_events": 3,
+    "model": "claude-haiku-4-5-20251001",
+    "usage": {
+      "input_tokens": 3,
+      "cache_creation_input_tokens": 115771,
+      "cache_read_input_tokens": 0,
+      "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 115771
+      },
+      "output_tokens": 2,
+      "service_tier": "standard",
+      "inference_geo": "not_available"
+    },
+    "prompt": "Pipeline stage-2, index=0, originalItem=\"stage-semantics\". You received this stage-1 JSON: {\"id\":0,\"primitive\":\"pipeline:stage-semantics\",\"note\":\"Semantic analysis pipeline stage\"}. In ONE short sentence, state the originalItem and the stage-1 id you received.",
+    "n_attachments": 1,
+    "attachments": "[1 attachment(s) saved under system-attachments/]",
+    "tool_uses": [],
+    "tool_results": [],
+    "result": "Received stage-1 id=0, primitive=\"pipeline:stage-semantics\" for originalItem=\"stage-semantics\".",
+    "result_kind": "text",
+    "start": "2026-05-28T18:57:58.126000+00:00",
+    "end": "2026-05-28T18:57:59.560000+00:00",
+    "duration_s": 1.434,
+    "journal_key": "v2:e901f44d177740dfb50fce9a81b43c937c8af33b241cf90f9373009efce688c4",
+    "journal_result_matches": true
+  },
+  {
+    "agentId": "ab8495e020517bd52",
+    "file": "agent-ab8495e020517bd52.jsonl",
+    "n_events": 3,
+    "model": "claude-haiku-4-5-20251001",
+    "usage": {
+      "input_tokens": 3,
+      "cache_creation_input_tokens": 115769,
+      "cache_read_input_tokens": 0,
+      "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 115769
+      },
+      "output_tokens": 7,
+      "service_tier": "standard",
+      "inference_geo": "not_available"
+    },
+    "prompt": "Pipeline stage-2, index=1, originalItem=\"no-barrier\". You received this stage-1 JSON: {\"id\":1,\"primitive\":\"pipeline:no-barrier\",\"note\":\"no-barrier stage complete\"}. In ONE short sentence, state the originalItem and the stage-1 id you received.",
+    "n_attachments": 1,
+    "attachments": "[1 attachment(s) saved under system-attachments/]",
+    "tool_uses": [],
+    "tool_results": [],
+    "result": "Received stage-1 id=1 for originalItem=\"no-barrier\" with primitive=\"pipeline:no-barrier\".",
+    "result_kind": "text",
+    "start": "2026-05-28T18:57:57.010000+00:00",
+    "end": "2026-05-28T18:58:01.821000+00:00",
+    "duration_s": 4.811,
+    "journal_key": "v2:8e674c5dd6583a5fba230ad7a879d8974616c375291482a7ed07c26e8eb0abb9",
+    "journal_result_matches": true
+  },
+  {
+    "agentId": "ab93e096ab0124880",
+    "file": "agent-ab93e096ab0124880.jsonl",
+    "n_events": 18,
+    "model": "claude-haiku-4-5-20251001",
+    "usage": {
+      "input_tokens": 5,
+      "cache_creation_input_tokens": 1515,
+      "cache_read_input_tokens": 116628,
+      "output_tokens": 253,
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 1515,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 5,
+          "output_tokens": 253,
+          "cache_read_input_tokens": 116628,
+          "cache_creation_input_tokens": 1515,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 1515
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "prompt": "You are probe #1. Return id=1, primitive=\"concurrency-cap\", and a note of at most 6 words describing what the \"concurrency-cap\" aspect of a dynamic workflow does.",
+    "n_attachments": 1,
+    "attachments": "[1 attachment(s) saved under system-attachments/]",
+    "tool_uses": [
+      {
+        "name": "Bash",
+        "input": {
+          "command": "find <repo-root> -type f -name \"*.md\" -o -name \"*.json\" -o -name \"*.yaml\" -o -name \"*.yml\" | head -20",
+          "tabId": "1"
+        }
+      },
+      {
+        "name": "Bash",
+        "input": {
+          "command": "find <repo-root> -type f \\( -name \"*.md\" -o -name \"*.json\" -o -name \"*.yaml\" -o -name \"*.yml\" \\) | head -20"
+        }
+      },
+      {
+        "name": "mcp__filesystem__list_directory",
+        "input": {
+          "path": "<repo-root>"
+        }
+      },
+      {
+        "name": "mcp__filesystem__list_directory",
+        "input": {
+          "path": "<repo-root>/traces"
+        }
+      },
+      {
+        "name": "mcp__filesystem__read_text_file",
+        "input": {
+          "path": "<repo-root>/traces/experiment-01-probe.workflow.js"
+        }
+      },
+      {
+        "name": "StructuredOutput",
+        "input": {
+          "id": 1,
+          "primitive": "concurrency-cap",
+          "note": "Limits maximum parallel concurrent operations"
+        }
+      }
+    ],
+    "tool_results": [
+      "<tool_use_error>InputValidationError: Bash failed due to the following issue:\nAn unexpected parameter `tabId` was provided</tool_use_error>",
+      "(Bash completed with no output)",
+      "{\"content\":\"[DIR] traces\"}",
+      "{\"content\":\"[FILE] experiment-01-probe.workflow.js\"}",
+      "{\"content\":\"// experiment-01-probe.workflow.js\\n// PURPOSE: A real, instrumented dynamic-workflow run whose only job is to EXERCISE\\n// every core primitive and emit ground-truth data we can harvest and analyze, so the\\n// 1:1 reproduction is grounded in observed behavior rather than assumptions.\\n//\\n// Exercised: phase(), parallel() [barrier], pipeline() [no-barrier, (prev,original,index)],\\n//            agent()+schema [structured output], agent() text, log(), budget.{total,spent,remaining},\\n//            opts.model override, opts.phase, opts.label.\\n// Harvested afterwards from the transcript dir: persisted script, agent-<id>.jsonl journals,\\n// runId, agentCount, tokensSpent, and the returned structured self-report below.\\n\\nexport const meta = {\\n  name: 'trace-dynamic-workflow',\\n  description: 'Instrumented real run to capture ground-truth execution data for a 1:1 reproduction of dynamic workflows.',\\n  phases: [\\n    { title: 'Fanout', detail: 'parallel() barrier \u2014 3 probes, schema output, mixed models' },\\n    { title: 'Pipeline', detail: 'pipeline() no-barrier \u2014 2 items x 2 stages (schema then text)' },\\n    { title: 'Synthesize', detail: 'single agent merges fanout + pipeline into a report' },\\n  ],\\n}\\n\\n// Shared structured-output schema (probes the StructuredOutput forced-tool path).\\nconst OBS = {\\n  type: 'object',\\n  properties: {\\n    id: { type: 'integer' },\\n    primitive: { type: 'string' },\\n    note: { type: 'string', description: 'at most 6 words' },\\n  },\\n  required: ['id', 'primitive', 'note'],\\n}\\n\\nlog(`[trace] start: budget.total=${budget.total} spent=${budget.spent()} remaining=${budget.remaining()}`)\\n\\n// --- Phase 1: parallel() \u2014 barrier semantics, concurrency, structured output, model override ---\\nphase('Fanout')\\nconst topics = ['parallel-barrier', 'concurrency-cap', 'schema-output']\\nconst fan = await parallel(\\n  topics.map((t, i) => () =>\\n    agent(\\n      `You are probe #${i}. Return id=${i}, primitive=${JSON.stringify(t)}, and a note of at most 6 words describing what the \\\"${t}\\\" aspect of a dynamic workflow does.`,\\n      { label: `probe:${t}`, phase: 'Fanout', schema: OBS, model: i === 0 ? 'sonnet' : 'haiku' },\\n    ),\\n  ),\\n)\\nlog(`[trace] fanout ok=${fan.filter(Boolean).length}/${topics.length} spent=${budget.spent()} remaining=${budget.remaining()}`)\\n\\n// --- Phase 2: pipeline() \u2014 no-barrier staging, (prev, original, index) contract ---\\nphase('Pipeline')\\nconst items = ['stage-semantics', 'no-barrier']\\nconst piped = await pipeline(\\n  items,\\n  // Stage 1: prev === original (the item itself). Schema output.\\n  (item, original, index) =>\\n    agent(\\n      `Pipeline stage-1, index=${index}, item=${JSON.stringify(item)}. Return id=${index}, primitive=${JSON.stringify('pipeline:' + item)}, note of at most 6 words.`,\\n      { label: `pipe1:${item}`, phase: 'Pipeline', schema: OBS, model: 'haiku' },\\n    ),\\n  // Stage 2: receives (prevResult, originalItem, index). Text output (no schema).\\n  (prev, original, index) =>\\n    agent(\\n      `Pipeline stage-2, index=${index}, originalItem=${JSON.stringify(original)}. You received this stage-1 JSON: ${JSON.stringify(prev)}. In ONE short sentence, state the originalItem and the stage-1 id you received.`,\\n      { label: `pipe2:${original}`, phase: 'Pipeline', model: 'haiku' },\\n    ),\\n)\\nlog(`[trace] pipeline chains_ok=${piped.filter(Boolean).length}/${items.length} spent=${budget.spent()} remaining=${budget.remaining()}`)\\n\\n// --- Phase 3: synthesize ---\\nphase('Synthesize')\\nconst synthesis = await agent(\\n  `You are the synthesizer. Fanout results: ${JSON.stringify(fan)}. Pipeline results: ${JSON.stringify(piped)}. In at most 3 sentences, summarize which primitives were exercised and whether parallel preserved input order.`,\\n  { label: 'synthesize', phase: 'Synthesize', model: 'sonnet' },\\n)\\n\\nlog(`[trace] end: spent=${budget.spent()} remaining=${budget.remaining()}`)\\n\\n// Structured self-report \u2014 itself a data artifact (captured as the run's return value).\\nreturn {\\n  meta_name: 'trace-dynamic-workflow',\\n  budgetTotal: budget.total,\\n  tokensSpent: budget.spent(),\\n  fanoutOrderPreserved: fan.every((r, i) => r && r.id === i),\\n  fanout: fan,\\n  pipeline: piped,\\n  synthesis,\\n  exercised: ['phase', 'parallel', 'pipeline', 'agent+schema', 'agent+text', 'log', 'budget', 'model-override', 'opts.label', 'opts.phase'],\\n}\\n\"}",
+      "Structured output provided successfully"
+    ],
+    "result": {
+      "id": 1,
+      "primitive": "concurrency-cap",
+      "note": "Limits maximum parallel concurrent operations"
+    },
+    "result_kind": "structured",
+    "start": "2026-05-28T18:57:32.143000+00:00",
+    "end": "2026-05-28T18:57:50.946000+00:00",
+    "duration_s": 18.803,
+    "journal_key": "v2:b35253f62136c17878b0e2a2bdc81e7b4e956e86b2ce0ad377844ad67748b6cd",
+    "journal_result_matches": true
+  }
+]

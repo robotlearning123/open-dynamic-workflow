@@ -1,0 +1,12 @@
+{"type":"started","key":"v2:9cc2a02cc133f6825a5f64dfa193f2239446190bc11573a1d51ea5b2384d1ed8","agentId":"a77aecba419a21d99"}
+{"type":"started","key":"v2:a19fd7ebff77b1731a5d67a5872df7fdb90c56b2a2e020647de6f983f5028043","agentId":"ac5345b8b6cfc4f4b"}
+{"type":"result","key":"v2:9cc2a02cc133f6825a5f64dfa193f2239446190bc11573a1d51ea5b2384d1ed8","agentId":"a77aecba419a21d99","result":{"id":0,"dim":"style"}}
+{"type":"started","key":"v2:3ecfff155ecfa605b77f23add58780d5d951e1c9b8a3898d3c9677257b51532d","agentId":"a6c540280ff101d91"}
+{"type":"started","key":"v2:4ae2490f6dbabf504f36119543a79248ed6b0330a4fcf8467b81780e767d41ef","agentId":"a864041aabfdad9d7"}
+{"type":"result","key":"v2:a19fd7ebff77b1731a5d67a5872df7fdb90c56b2a2e020647de6f983f5028043","agentId":"ac5345b8b6cfc4f4b","result":{"id":1,"dim":"perf"}}
+{"type":"started","key":"v2:166836ae0a500f8f1e27b5ba6baaf4c7ab564e9f70a8ccde09120207d94c4036","agentId":"add89033c86671a3b"}
+{"type":"started","key":"v2:ac3da711bc2ab1e1ac6ea5004739940e007a8c84caca5ec6c04f3e84dd5db163","agentId":"a012d1b0fe3f219da"}
+{"type":"result","key":"v2:3ecfff155ecfa605b77f23add58780d5d951e1c9b8a3898d3c9677257b51532d","agentId":"a6c540280ff101d91","result":{"ref":"style-p","ok":true}}
+{"type":"result","key":"v2:4ae2490f6dbabf504f36119543a79248ed6b0330a4fcf8467b81780e767d41ef","agentId":"a864041aabfdad9d7","result":{"ref":"style-q","ok":true}}
+{"type":"result","key":"v2:166836ae0a500f8f1e27b5ba6baaf4c7ab564e9f70a8ccde09120207d94c4036","agentId":"add89033c86671a3b","result":{"ref":"perf-p","ok":true}}
+{"type":"result","key":"v2:ac3da711bc2ab1e1ac6ea5004739940e007a8c84caca5ec6c04f3e84dd5db163","agentId":"a012d1b0fe3f219da","result":{"ref":"perf-q","ok":true}}

@@ -1,0 +1,4 @@
+{"type":"started","key":"v2:2a8495481c8a8cb196833a63cb089ca8597824b8cee5ade03c8fcd253576a923","agentId":"a001-1"}
+{"type":"started","key":"v2:7bb96d1241e3d6d6c3fe3e2dc3eec0247e5e5b5035e7f9f57143cc7767c09545","agentId":"a002-2"}
+{"type":"result","key":"v2:7bb96d1241e3d6d6c3fe3e2dc3eec0247e5e5b5035e7f9f57143cc7767c09545","agentId":"a002-2","result":"BETA"}
+{"type":"result","key":"v2:2a8495481c8a8cb196833a63cb089ca8597824b8cee5ade03c8fcd253576a923","agentId":"a001-1","result":"ALPHA"}

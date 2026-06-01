@@ -1,0 +1,9 @@
+node_modules
+dist
+.runs/
+*.log
+coverage/
+.env
+*.tgz
+.npm/
+.claude/
